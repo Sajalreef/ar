@@ -2,19 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Camera AR Image Placer</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebXR Image Placement AR</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="controls">
-    <input type="file" id="imageUpload" accept="image/*" />
-    <button onclick="resetImages()">Reset</button>
+    <input type="file" id="imageUpload" accept="image/*"/>
+    <button id="resetBtn">Reset</button>
   </div>
-
-  <video id="camera" autoplay muted playsinline></video>
-  <canvas id="overlay"></canvas>
-
-  <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/webxr/ARButton.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

@@ -2,29 +2,20 @@ body {
   margin: 0;
   overflow: hidden;
   font-family: sans-serif;
-  background: black;
-}
-
-#camera, #overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  object-fit: cover;
-  width: 100vw;
-  height: 100vh;
 }
 
 .controls {
   position: absolute;
-  z-index: 10;
   top: 10px;
   left: 10px;
-  background: rgba(0,0,0,0.6);
-  padding: 8px;
-  border-radius: 8px;
+  z-index: 2;
+  background: rgba(0,0,0,0.5);
+  padding: 10px;
+  border-radius: 4px;
+  color: white;
 }
 
-input[type="file"], button {
-  margin: 4px;
-  color: white;
+input, button {
+  margin-right: 8px;
+  font-size: 14px;
 }

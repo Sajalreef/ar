@@ -1,99 +1,116 @@
-const video = document.getElementById('camera');
-const canvas = document.getElementById('overlay');
-const ctx = canvas.getContext('2d');
-let images = [];
+let camera, scene, renderer, controller;
+let reticle, hitTestSource = null, hitTestSourceRequested = false;
+const placedImages = [];
 
-let selectedImage = null;
-let offsetX = 0;
-let offsetY = 0;
+init();
+animate();
 
-// Resize canvas to video
-function resizeCanvas() {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-}
+function init() {
+  // Setup scene and renderer
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera();
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  document.body.appendChild(renderer.domElement);
 
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then((stream) => {
-    video.srcObject = stream;
-    video.onloadedmetadata = () => {
-      resizeCanvas();
-      draw();
-    };
-  })
-  .catch(err => alert('Camera access denied'));
+  document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
-document.getElementById('imageUpload').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  // Reticle to show placement point
+  const geometry = new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI / 2);
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  reticle = new THREE.Mesh(geometry, material);
+  reticle.visible = false;
+  scene.add(reticle);
 
-  const img = new Image();
-  img.onload = () => {
-    const scale = 0.3;
-    images.push({
-      img,
-      x: canvas.width / 2 - img.width * scale / 2,
-      y: canvas.height / 2 - img.height * scale / 2,
-      scale
-    });
-  };
-  img.src = URL.createObjectURL(file);
-});
+  // Controller for taps
+  controller = renderer.xr.getController(0);
+  controller.addEventListener('select', onSelect);
+  scene.add(controller);
 
-canvas.addEventListener('mousedown', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  for (let i = images.length - 1; i >= 0; i--) {
-    const image = images[i];
-    const w = image.img.width * image.scale;
-    const h = image.img.height * image.scale;
-    if (x >= image.x && x <= image.x + w && y >= image.y && y <= image.y + h) {
-      selectedImage = image;
-      offsetX = x - image.x;
-      offsetY = y - image.y;
-      break;
+  // Image file upload
+  document.getElementById('imageUpload').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const img = new Image();
+      img.onload = () => currentImage = img;
+      img.src = URL.createObjectURL(file);
     }
-  }
-});
+  });
 
-canvas.addEventListener('mousemove', (e) => {
-  if (!selectedImage) return;
-  const rect = canvas.getBoundingClientRect();
-  selectedImage.x = e.clientX - rect.left - offsetX;
-  selectedImage.y = e.clientY - rect.top - offsetY;
-});
-
-canvas.addEventListener('mouseup', () => {
-  selectedImage = null;
-});
-
-canvas.addEventListener('wheel', (e) => {
-  if (!selectedImage) return;
-  e.preventDefault();
-  selectedImage.scale += e.deltaY * -0.001;
-  selectedImage.scale = Math.max(0.05, Math.min(selectedImage.scale, 2));
-});
-
-function draw() {
-  requestAnimationFrame(draw);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  images.forEach(image => {
-    const w = image.img.width * image.scale;
-    const h = image.img.height * image.scale;
-    ctx.drawImage(image.img, image.x, image.y, w, h);
-
-    // Show dimensions
-    const cmWidth = (w / canvas.width * 100).toFixed(1); // assume canvas width = 100cm
-    const cmHeight = (h / canvas.height * 100).toFixed(1);
-    ctx.font = '16px sans-serif';
-    ctx.fillStyle = 'yellow';
-    ctx.fillText(`${cmWidth}cm x ${cmHeight}cm`, image.x, image.y - 10);
+  // Reset button
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    placedImages.forEach(o => scene.remove(o));
+    placedImages.length = 0;
   });
 }
 
-function resetImages() {
-  images = [];
+let currentImage = null;
+
+function onSelect() {
+  if (reticle.visible && currentImage) {
+    const texture = new THREE.CanvasTexture(currentImage);
+    const aspect = currentImage.width / currentImage.height;
+    const height = 0.4;
+    const width = height * aspect;
+    const geometry = new THREE.PlaneGeometry(width, height);
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.copy(reticle.position);
+    mesh.quaternion.copy(reticle.quaternion);
+
+    // Display dimension above
+    const loader = new THREE.FontLoader();
+    loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', font => {
+      const textGeo = new THREE.TextGeometry(`${(width*100).toFixed(1)} cm`, {
+        font, size: 0.05, height: 0.001
+      });
+      const textMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      const textMesh = new THREE.Mesh(textGeo, textMat);
+      textMesh.position.set(width / -2, height / 2 + 0.05, 0);
+      mesh.add(textMesh);
+    });
+
+    placedImages.push(mesh);
+    scene.add(mesh);
+    currentImage = null;
+  }
+}
+
+function animate() {
+  renderer.setAnimationLoop(render);
+}
+
+function render(timestamp, frame) {
+  if (frame) {
+    const session = renderer.xr.getSession();
+    if (!hitTestSourceRequested) {
+      session.requestReferenceSpace('viewer').then(ref => {
+        session.requestHitTestSource({ space: ref }).then(source => hitTestSource = source);
+      });
+      session.addEventListener('end', () => hitTestSourceRequested = false);
+      hitTestSourceRequested = true;
+    }
+
+    if (hitTestSource) {
+      const referenceSpace = renderer.xr.getReferenceSpace();
+      const hitTestResults = frame.getHitTestResults(hitTestSource);
+      if (hitTestResults.length > 0) {
+        const hit = hitTestResults[0];
+        const pose = hit.getPose(referenceSpace);
+        reticle.visible = true;
+        reticle.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+        reticle.quaternion.set(
+          pose.transform.orientation.x,
+          pose.transform.orientation.y,
+          pose.transform.orientation.z,
+          pose.transform.orientation.w
+        );
+      } else {
+        reticle.visible = false;
+      }
+    }
+  }
+  renderer.render(scene, camera);
 }
