@@ -28,39 +28,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>AR Wall Image Placer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-  <style>
-    body { margin: 0; overflow: hidden; font-family: sans-serif; }
-    #upload-container { position: absolute; top: 20px; left: 20px; z-index: 100; }
-    #controls { position: absolute; bottom: 20px; width: 100%; text-align: center; z-index: 100; }
-    button { padding: 10px 20px; margin: 0 10px; font-size: 16px; }
-    .hidden { display: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AR Wall Image Placer</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- AR Scene -->
+    <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; 
+          renderer: antialias: true; alpha: true; logarithmicDepthBuffer: true; 
+          precision: mediump;">
+        <a-camera-static/>
+        <a-entity id="image-entity"></a-entity>
+    </a-scene>
 
-  <!-- AR Scene -->
-  <a-scene embedded arjs="trackingMethod: best; sourceType: webcam;">
-    <a-camera position="0 0 0" look-controls="enabled: false" wasd-controls-enabled="false"></a-camera>
-    <a-entity id="image-entity"></a-entity>
-  </a-scene>
+    <!-- UI Elements -->
+    <div id="upload-container">
+        <input type="file" id="image-upload" accept="image/*">
+        <button id="upload-btn">Upload Image</button>
+    </div>
 
-  <!-- UI -->
-  <div id="upload-container">
-    <input type="file" id="image-upload" accept="image/*" class="hidden" />
-    <button id="upload-btn">Upload Image</button>
-  </div>
+    <div id="controls">
+        <button id="resize-btn">Resize</button>
+        <button id="move-btn">Move</button>
+        <button id="save-btn">Save</button>
+    </div>
 
-  <div id="controls" class="hidden">
-    <button id="resize-btn">Resize Mode</button>
-    <button id="move-btn">Move Mode</button>
-    <button id="save-btn">Save Design</button>
-  </div>
+    <div id="dimension-display">
+        Size: <span id="size-value">1.00</span>m × <span id="size-value">1.00</span>m
+    </div>
 
-  <script src="app.js"></script>
+    <div id="orientation-warning">
+        <h2>Please rotate your device to portrait mode</h2>
+        <p>For the best experience, use this app in portrait orientation</p>
+    </div>
+
+    <script src="app.js"></script>
 </body>
 </html>
