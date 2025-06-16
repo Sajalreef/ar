@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const moveBtn = document.getElementById('move-btn');
     const saveBtn = document.getElementById('save-btn');
     const dimensionDisplay = document.getElementById('dimension-display');
-    const sizeValues = document.querySelectorAll('#size-value');
+const sizeValues = document.querySelectorAll('.size-value'); // fixed duplicate IDs
     const orientationWarning = document.getElementById('orientation-warning');
     const spinner = document.createElement('div');
     spinner.className = 'spinner';
@@ -222,5 +222,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Uncomment to enable loading saved designs on startup
-    // loadSavedDesign();
+    loadSavedDesign();
 });

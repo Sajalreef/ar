@@ -121,3 +121,14 @@ button.active {
 @keyframes spin {
     to { transform: translate(-50%, -50%) rotate(360deg); }
 }
+
+@media screen and (max-height: 700px) {
+    #controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #dimension-display {
+        bottom: 130px;
+    }
+}
