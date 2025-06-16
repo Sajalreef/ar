@@ -1,43 +1,20 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AR Wall Image Placer</title>
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Camera AR Image Placer</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- AR Scene -->
-  <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; renderer: antialias: true; alpha: true;">
-    <a-camera-static></a-camera-static>
-    <a-entity id="image-entity"></a-entity>
-  </a-scene>
-
-  <!-- UI -->
-  <div id="upload-container">
-    <input type="file" id="image-upload" accept="image/*">
-    <button id="upload-btn">Upload Image</button>
+  <div class="controls">
+    <input type="file" id="imageUpload" accept="image/*" />
+    <button onclick="resetImages()">Reset</button>
   </div>
 
-  <div id="controls">
-    <button id="resize-btn">Resize</button>
-    <button id="move-btn">Move</button>
-    <button id="save-btn">Save</button>
-  </div>
+  <video id="camera" autoplay muted playsinline></video>
+  <canvas id="overlay"></canvas>
 
-  <div id="dimension-display">
-    Size: <span class="size-value">1.00</span>m × <span class="size-value">1.00</span>m<br>
-    <small>(1000px × 1000px)</small>
-  </div>
-
-  <div id="orientation-warning">
-    <h2>Please rotate your device to portrait mode</h2>
-    <p>For the best experience, use this app in portrait orientation</p>
-  </div>
-
-  <script src="app.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
