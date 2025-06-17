@@ -2,137 +2,131 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AR Wall Image Placement</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebXR AR Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     canvas {
       position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-    }
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: #f3f4f6;
-    }
-    #overlay {
-      position: fixed;
-      bottom: 1rem;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 100;
-      background: white;
-      padding: 1rem;
-      border-radius: 1rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-    #snapshot {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      z-index: 100;
+      top: 0;
+      left: 0;
     }
   </style>
 </head>
-<body>
+<body class="bg-gray-100 flex flex-col items-center justify-center h-screen">
 
-<div id="overlay" class="flex flex-col items-center space-y-2">
-  <input type="file" accept="image/*" id="imageInput" class="mb-2" />
-  <p id="dimensions" class="text-gray-700 text-sm italic"></p>
-</div>
+  <!-- Overlay Controls -->
+  <div id="overlay" class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex gap-4">
+    <input type="file" id="imageUpload" accept="image/*" class="hidden" />
+    <label for="imageUpload" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded cursor-pointer">
+      Upload Image
+    </label>
+    <button id="snapshot" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded hidden">
+      Save Snapshot
+    </button>
+  </div>
 
-<button id="snapshot" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">
-  Save Snapshot
-</button>
+  <!-- AR Not Supported Message -->
+  <div id="notSupportedMsg" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+    bg-red-100 text-red-700 px-6 py-4 rounded-lg shadow-lg z-50 text-center max-w-sm w-full">
+    <p class="text-lg font-semibold mb-2">AR Not Supported</p>
+    <p>Your device or browser does not support WebXR immersive AR.</p>
+    <p class="mt-2 text-sm text-gray-600">Please use an ARCore-enabled Android device with Chrome.</p>
+  </div>
 
-<script type="module">
-  import * as THREE from 'https://cdn.skypack.dev/three@0.164.0';
-  import { ARButton } from 'https://cdn.skypack.dev/three@0.164.0/examples/jsm/webxr/ARButton.js';
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js';
+    import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/webxr/ARButton.js';
 
-  let camera, scene, renderer;
-  let imageMesh = null;
-  let controller;
-  let imageWidth = 1;
-  let imageHeight = 1;
+    let camera, scene, renderer;
+    let imageMesh = null;
 
-  init();
+    const overlay = document.getElementById('overlay');
+    const snapshotButton = document.getElementById('snapshot');
+    const imageUpload = document.getElementById('imageUpload');
 
-  function init() {
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera();
-
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.xr.enabled = true;
-    document.body.appendChild(renderer.domElement);
-
-    document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
-
-    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-    scene.add(light);
-
-    controller = renderer.xr.getController(0);
-    controller.addEventListener('select', onSelect);
-    scene.add(controller);
-
-    renderer.setAnimationLoop(() => {
-      renderer.render(scene, camera);
-    });
-  }
-
-  function onSelect() {
-    if (!imageMesh) return;
-
-    const refSpace = renderer.xr.getReferenceSpace();
-    const frame = renderer.xr.getFrame();
-    const viewerPose = frame.getViewerPose(refSpace);
-
-    if (!viewerPose) return;
-
-    const hitTestResults = frame.getHitTestResultsForTransientInput
-      ? frame.getHitTestResultsForTransientInput('screen-space')
-      : frame.getHitTestResults(controller);
-
-    if (hitTestResults.length > 0) {
-      const hit = hitTestResults[0].getPose(refSpace);
-      imageMesh.position.set(hit.transform.position.x, hit.transform.position.y, hit.transform.position.z);
-      imageMesh.quaternion.set(hit.transform.orientation.x, hit.transform.orientation.y, hit.transform.orientation.z, hit.transform.orientation.w);
-      scene.add(imageMesh);
+    function showNotSupported() {
+      document.getElementById('notSupportedMsg').classList.remove('hidden');
+      overlay.style.display = 'none';
+      snapshotButton.style.display = 'none';
     }
-  }
 
-  document.getElementById('imageInput').addEventListener('change', async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+    if (navigator.xr) {
+      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+        if (supported) {
+          init();
+        } else {
+          showNotSupported();
+        }
+      }).catch(() => showNotSupported());
+    } else {
+      showNotSupported();
+    }
 
-    const img = new Image();
-    img.onload = () => {
-      const aspect = img.width / img.height;
-      imageWidth = 1.0;
-      imageHeight = 1.0 / aspect;
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
-      document.getElementById('dimensions').textContent = `Image Size: ${img.width} x ${img.height}`;
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      document.body.appendChild(renderer.domElement);
 
-      const texture = new THREE.Texture(img);
-      texture.needsUpdate = true;
+      document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
-      const geometry = new THREE.PlaneGeometry(imageWidth, imageHeight);
-      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true });
-      imageMesh = new THREE.Mesh(geometry, material);
-    };
-    img.src = URL.createObjectURL(file);
-  });
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
 
-  // Save snapshot
-  document.getElementById('snapshot').addEventListener('click', () => {
-    renderer.domElement.toBlob((blob) => {
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'ar_snapshot.png';
-      link.click();
-    });
-  });
-</script>
+      imageUpload.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const img = new Image();
+          img.src = e.target.result;
+
+          img.onload = () => {
+            const texture = new THREE.Texture(img);
+            texture.needsUpdate = true;
+
+            const ratio = img.width / img.height;
+            const width = 1.0;
+            const height = width / ratio;
+
+            const geometry = new THREE.PlaneGeometry(width, height);
+            const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+
+            if (imageMesh) scene.remove(imageMesh);
+
+            imageMesh = new THREE.Mesh(geometry, material);
+            imageMesh.position.set(0, 0, -1);
+            scene.add(imageMesh);
+
+            snapshotButton.classList.remove('hidden');
+          };
+        };
+        reader.readAsDataURL(file);
+      });
+
+      snapshotButton.addEventListener('click', () => {
+        renderer.render(scene, camera);
+        const imgURL = renderer.domElement.toDataURL('image/png');
+
+        const a = document.createElement('a');
+        a.href = imgURL;
+        a.download = 'ar_snapshot.png';
+        a.click();
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+  </script>
 </body>
 </html>
