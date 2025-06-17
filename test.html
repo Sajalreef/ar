@@ -3,130 +3,136 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AR Art Preview</title>
+  <title>AR Wall Image Placement</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f0f4f8;
-    }
     canvas {
-      width: 100% !important;
-      height: auto !important;
-      border-radius: 1rem;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
     }
-    .message-box {
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f3f4f6;
+    }
+    #overlay {
       position: fixed;
-      top: 50%;
+      bottom: 1rem;
       left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0, 0, 0, 0.75);
-      color: white;
-      padding: 1rem 2rem;
-      border-radius: 10px;
-      z-index: 1000;
-      text-align: center;
-      opacity: 0;
-      transition: opacity 0.4s ease;
-      pointer-events: none;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: white;
+      padding: 1rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
-    .message-box.show {
-      opacity: 1;
-      pointer-events: auto;
+    #snapshot {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 100;
     }
   </style>
 </head>
-<body class="p-4 flex flex-col items-center">
+<body>
 
-  <header class="text-center w-full max-w-md mb-4">
-    <h1 class="text-3xl font-bold text-gray-800">Preview Art on Your Wall</h1>
-    <p class="text-sm text-gray-600 mt-2">Upload your art, see it in AR, and save it to your gallery.</p>
-  </header>
+<div id="overlay" class="flex flex-col items-center space-y-2">
+  <input type="file" accept="image/*" id="imageInput" class="mb-2" />
+  <p id="dimensions" class="text-gray-700 text-sm italic"></p>
+</div>
 
-  <main class="bg-white rounded-lg shadow p-4 w-full max-w-md">
-    <label class="block mb-2 text-gray-700 font-semibold text-lg">Upload Your Image</label>
-    <label for="upload" class="cursor-pointer inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
-      Choose Image
-    </label>
-    <input type="file" id="upload" accept="image/*" class="hidden">
+<button id="snapshot" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">
+  Save Snapshot
+</button>
 
-    <p id="imageInfo" class="text-sm text-gray-600 mt-2 italic"></p>
+<script type="module">
+  import * as THREE from 'https://cdn.skypack.dev/three@0.164.0';
+  import { ARButton } from 'https://cdn.skypack.dev/three@0.164.0/examples/jsm/webxr/ARButton.js';
 
-    <canvas id="previewCanvas" class="mt-4 w-full max-h-[400px] object-contain"></canvas>
+  let camera, scene, renderer;
+  let imageMesh = null;
+  let controller;
+  let imageWidth = 1;
+  let imageHeight = 1;
 
-    <button id="saveButton" class="mt-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
-      Save to Gallery
-    </button>
-  </main>
+  init();
 
-  <div id="messageBox" class="message-box"></div>
+  function init() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera();
 
-  <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js';
-    import { GLTFExporter } from 'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/exporters/GLTFExporter.js';
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
 
-    const uploadInput = document.getElementById('upload');
-    const canvas = document.getElementById('previewCanvas');
-    const saveButton = document.getElementById('saveButton');
-    const messageBox = document.getElementById('messageBox');
-    const imageInfo = document.getElementById('imageInfo');
+    document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
-    let currentImage = null;
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+    scene.add(light);
 
-    function showMessage(msg, duration = 3000) {
-      messageBox.textContent = msg;
-      messageBox.classList.add('show');
-      setTimeout(() => messageBox.classList.remove('show'), duration);
+    controller = renderer.xr.getController(0);
+    controller.addEventListener('select', onSelect);
+    scene.add(controller);
+
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+    });
+  }
+
+  function onSelect() {
+    if (!imageMesh) return;
+
+    const refSpace = renderer.xr.getReferenceSpace();
+    const frame = renderer.xr.getFrame();
+    const viewerPose = frame.getViewerPose(refSpace);
+
+    if (!viewerPose) return;
+
+    const hitTestResults = frame.getHitTestResultsForTransientInput
+      ? frame.getHitTestResultsForTransientInput('screen-space')
+      : frame.getHitTestResults(controller);
+
+    if (hitTestResults.length > 0) {
+      const hit = hitTestResults[0].getPose(refSpace);
+      imageMesh.position.set(hit.transform.position.x, hit.transform.position.y, hit.transform.position.z);
+      imageMesh.quaternion.set(hit.transform.orientation.x, hit.transform.orientation.y, hit.transform.orientation.z, hit.transform.orientation.w);
+      scene.add(imageMesh);
     }
+  }
 
-    function saveCanvasToGallery() {
-      if (!canvas) return;
+  document.getElementById('imageInput').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const aspect = img.width / img.height;
+      imageWidth = 1.0;
+      imageHeight = 1.0 / aspect;
+
+      document.getElementById('dimensions').textContent = `Image Size: ${img.width} x ${img.height}`;
+
+      const texture = new THREE.Texture(img);
+      texture.needsUpdate = true;
+
+      const geometry = new THREE.PlaneGeometry(imageWidth, imageHeight);
+      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true });
+      imageMesh = new THREE.Mesh(geometry, material);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  // Save snapshot
+  document.getElementById('snapshot').addEventListener('click', () => {
+    renderer.domElement.toBlob((blob) => {
       const link = document.createElement('a');
-      link.download = 'ar_preview.png';
-      link.href = canvas.toDataURL('image/png');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'ar_snapshot.png';
       link.click();
-    }
-
-    uploadInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          imageInfo.textContent = `Dimensions: ${img.width} × ${img.height}px`;
-
-          const aspect = img.width / img.height;
-          const maxW = 512;
-          const canvasW = maxW;
-          const canvasH = canvasW / aspect;
-
-          canvas.width = canvasW;
-          canvas.height = canvasH;
-
-          const ctx = canvas.getContext('2d');
-          ctx.clearRect(0, 0, canvasW, canvasH);
-          ctx.drawImage(img, 0, 0, canvasW, canvasH);
-
-          // Store current image for saving
-          currentImage = canvas.toDataURL('image/png');
-
-          showMessage("Image loaded. Preview ready!");
-        };
-        img.onerror = () => showMessage("Error loading image.");
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
     });
-
-    saveButton.addEventListener('click', () => {
-      if (!currentImage) {
-        showMessage("Upload an image first.");
-        return;
-      }
-      saveCanvasToGallery();
-    });
-  </script>
+  });
+</script>
 </body>
 </html>
