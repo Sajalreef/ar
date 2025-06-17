@@ -1,104 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>AR Wall Art</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AR Art Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    canvas { display: block; width: 100%; height: 100%; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f0f4f8;
+    }
+    canvas {
+      width: 100% !important;
+      height: auto !important;
+      border-radius: 1rem;
+    }
+    .message-box {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.75);
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 10px;
+      z-index: 1000;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    .message-box.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
   </style>
 </head>
-<body class="bg-gray-100 text-center flex flex-col items-center justify-center min-h-screen p-4">
-  <h1 class="text-2xl font-bold mb-4">Upload Art and Preview in AR</h1>
+<body class="p-4 flex flex-col items-center">
 
-  <!-- Upload Button -->
-  <label class="bg-indigo-600 text-white px-4 py-2 rounded cursor-pointer hover:bg-indigo-700">
-    Choose Image
-    <input type="file" accept="image/*" id="imageUpload" hidden />
-  </label>
-  <p id="dimensions" class="text-sm text-gray-600 mt-2"></p>
-  <button id="startAR" class="mt-6 bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700">Start AR</button>
+  <header class="text-center w-full max-w-md mb-4">
+    <h1 class="text-3xl font-bold text-gray-800">Preview Art on Your Wall</h1>
+    <p class="text-sm text-gray-600 mt-2">Upload your art, see it in AR, and save it to your gallery.</p>
+  </header>
 
-  <!-- Message if AR not supported -->
-  <p id="arMessage" class="mt-4 text-red-600 hidden">WebXR AR not supported on this device.</p>
+  <main class="bg-white rounded-lg shadow p-4 w-full max-w-md">
+    <label class="block mb-2 text-gray-700 font-semibold text-lg">Upload Your Image</label>
+    <label for="upload" class="cursor-pointer inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+      Choose Image
+    </label>
+    <input type="file" id="upload" accept="image/*" class="hidden">
 
-  <!-- Three.js + WebXR -->
+    <p id="imageInfo" class="text-sm text-gray-600 mt-2 italic"></p>
+
+    <canvas id="previewCanvas" class="mt-4 w-full max-h-[400px] object-contain"></canvas>
+
+    <button id="saveButton" class="mt-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
+      Save to Gallery
+    </button>
+  </main>
+
+  <div id="messageBox" class="message-box"></div>
+
   <script type="module">
-    import * as THREE from 'https://cdn.skypack.dev/three@0.164.0';
-    import { ARButton } from 'https://cdn.skypack.dev/three@0.164.0/examples/jsm/webxr/ARButton.js';
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js';
+    import { GLTFExporter } from 'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/exporters/GLTFExporter.js';
 
-    let camera, scene, renderer;
-    let imageTexture = null;
+    const uploadInput = document.getElementById('upload');
+    const canvas = document.getElementById('previewCanvas');
+    const saveButton = document.getElementById('saveButton');
+    const messageBox = document.getElementById('messageBox');
+    const imageInfo = document.getElementById('imageInfo');
 
-    const imageUpload = document.getElementById('imageUpload');
-    const dimensionsText = document.getElementById('dimensions');
-    const startARBtn = document.getElementById('startAR');
-    const arMessage = document.getElementById('arMessage');
+    let currentImage = null;
 
-    let imageDataUrl = null;
+    function showMessage(msg, duration = 3000) {
+      messageBox.textContent = msg;
+      messageBox.classList.add('show');
+      setTimeout(() => messageBox.classList.remove('show'), duration);
+    }
 
-    // Handle image upload
-    imageUpload.addEventListener('change', (e) => {
+    function saveCanvasToGallery() {
+      if (!canvas) return;
+      const link = document.createElement('a');
+      link.download = 'ar_preview.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    uploadInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function(event) {
-        imageDataUrl = event.target.result;
+      reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          dimensionsText.textContent = `Image Size: ${img.width} x ${img.height}`;
+          imageInfo.textContent = `Dimensions: ${img.width} × ${img.height}px`;
+
+          const aspect = img.width / img.height;
+          const maxW = 512;
+          const canvasW = maxW;
+          const canvasH = canvasW / aspect;
+
+          canvas.width = canvasW;
+          canvas.height = canvasH;
+
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvasW, canvasH);
+          ctx.drawImage(img, 0, 0, canvasW, canvasH);
+
+          // Store current image for saving
+          currentImage = canvas.toDataURL('image/png');
+
+          showMessage("Image loaded. Preview ready!");
         };
-        img.src = imageDataUrl;
+        img.onerror = () => showMessage("Error loading image.");
+        img.src = reader.result;
       };
       reader.readAsDataURL(file);
     });
 
-    startARBtn.addEventListener('click', () => {
-      if (!navigator.xr || !navigator.xr.isSessionSupported) {
-        arMessage.classList.remove('hidden');
+    saveButton.addEventListener('click', () => {
+      if (!currentImage) {
+        showMessage("Upload an image first.");
         return;
       }
-
-      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-        if (supported) {
-          initAR();
-        } else {
-          arMessage.classList.remove('hidden');
-        }
-      });
+      saveCanvasToGallery();
     });
-
-    function initAR() {
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera();
-
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
-      document.body.appendChild(renderer.domElement);
-
-      document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
-
-      // Load uploaded texture
-      const loader = new THREE.TextureLoader();
-      loader.load(imageDataUrl, (texture) => {
-        const aspect = texture.image.width / texture.image.height;
-        const width = 0.7; // meters
-        const height = width / aspect;
-
-        const geometry = new THREE.PlaneGeometry(width, height);
-        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(0, 0, -2); // In front of camera
-        scene.add(mesh);
-      });
-
-      renderer.setAnimationLoop(() => {
-        renderer.render(scene, camera);
-      });
-    }
   </script>
 </body>
 </html>
