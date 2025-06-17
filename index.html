@@ -2,17 +2,197 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WebXR Image Placement AR</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Art AR Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f0f4f8;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    model-viewer {
+      width: 100%;
+      height: calc(100vh - 120px);
+      background-color: #e2e8f0;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --mv-background-color: transparent;
+    }
+    .custom-file-input {
+      display: inline-block;
+      background-color: #4f46e5;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.3s ease;
+      text-align: center;
+    }
+    .custom-file-input:hover {
+      background-color: #4338ca;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .message-box {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 1000;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+      pointer-events: none;
+    }
+    .message-box.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
 </head>
-<body>
-  <div class="controls">
-    <input type="file" id="imageUpload" accept="image/*"/>
-    <button id="resetBtn">Reset</button>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/webxr/ARButton.js"></script>
-  <script src="app.js"></script>
+<body class="flex flex-col items-center p-4">
+
+  <header class="w-full max-w-4xl text-center py-6">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Art on Your Wall AR Preview</h1>
+    <p class="text-lg text-gray-600">See how your favorite art looks in your space before you buy!</p>
+  </header>
+
+  <main class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6 mb-8 flex flex-col items-center">
+    <section class="mb-6 w-full flex flex-col items-center">
+      <h2 class="text-2xl font-semibold text-gray-700 mb-4">1. Upload Your Art Image</h2>
+      <p class="text-gray-600 mb-4 text-center">Select an image of the art piece you want to preview on your wall.</p>
+      <label for="imageUpload" class="custom-file-input">Choose Art Image</label>
+      <input type="file" id="imageUpload" accept="image/*" />
+      <p id="fileNameDisplay" class="mt-2 text-gray-500 italic"></p>
+    </section>
+
+    <section class="w-full flex flex-col items-center">
+      <h2 class="text-2xl font-semibold text-gray-700 mb-4">2. Preview in AR</h2>
+      <p class="text-gray-600 mb-4 text-center">Once your image is loaded, click the AR button below to view it on your wall.</p>
+
+      <model-viewer
+        id="arViewer"
+        src=""
+        alt="Art piece for AR preview"
+        ar
+        ar-modes="webxr quick-look scene-viewer"
+        ar-placement="wall"
+        camera-controls
+        touch-action="pan-y"
+        shadow-intensity="1"
+        environment-image="neutral"
+        poster="https://placehold.co/600x400/cccccc/333333?text=Upload+Image+To+Preview"
+        class="rounded-xl"
+      >
+        <div slot="ar-button" class="flex flex-col items-center justify-center p-4">
+          <button class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+            Activate AR View
+          </button>
+          <p class="text-sm text-white mt-2">Requires AR-enabled device</p>
+        </div>
+      </model-viewer>
+    </section>
+  </main>
+
+  <div id="messageBox" class="message-box"></div>
+
+  <script>
+    const imageUpload = document.getElementById('imageUpload');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const arViewer = document.getElementById('arViewer');
+    const messageBox = document.getElementById('messageBox');
+    let currentImageBlobUrl = '';
+    let THREE;
+    let GLTFExporter;
+
+    function showMessage(message, duration = 3000) {
+      messageBox.textContent = message;
+      messageBox.classList.add('show');
+      setTimeout(() => {
+        messageBox.classList.remove('show');
+      }, duration);
+    }
+
+    function cleanupPreviousBlob() {
+      if (currentImageBlobUrl) {
+        URL.revokeObjectURL(currentImageBlobUrl);
+        currentImageBlobUrl = '';
+      }
+    }
+
+    async function initThreeAndExporter() {
+      const threeModule = await import('https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js');
+      THREE = threeModule;
+      const exporterModule = await import('https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/exporters/GLTFExporter.js');
+      GLTFExporter = exporterModule.GLTFExporter;
+    }
+
+    window.onload = async () => {
+      try {
+        await initThreeAndExporter();
+      } catch (e) {
+        showMessage("Failed to load AR components", 4000);
+        imageUpload.disabled = true;
+        return;
+      }
+
+      imageUpload.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+          fileNameDisplay.textContent = '';
+          arViewer.src = '';
+          return;
+        }
+
+        fileNameDisplay.textContent = `Selected: ${file.name}`;
+        showMessage('Processing image...', 2000);
+        cleanupPreviousBlob();
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const imageDataUrl = e.target.result;
+          const img = new Image();
+          img.onload = () => {
+            const aspectRatio = img.width / img.height;
+            const planeWidth = 2;
+            const planeHeight = planeWidth / aspectRatio;
+
+            const scene = new THREE.Scene();
+            const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+            const texture = new THREE.TextureLoader().load(imageDataUrl);
+            const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            const exporter = new GLTFExporter();
+            exporter.parse(scene, (glb) => {
+              const blob = new Blob([glb], { type: 'model/gltf-binary' });
+              const glbUrl = URL.createObjectURL(blob);
+              arViewer.src = glbUrl;
+              currentImageBlobUrl = glbUrl;
+              showMessage("Image ready for AR preview!", 3000);
+            }, { binary: true });
+          };
+          img.onerror = () => {
+            showMessage("Error loading image.", 4000);
+          };
+          img.src = imageDataUrl;
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+
+    window.addEventListener('beforeunload', cleanupPreviousBlob);
+  </script>
 </body>
 </html>
