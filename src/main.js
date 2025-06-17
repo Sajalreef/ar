@@ -6,17 +6,17 @@ const unsupported = document.getElementById('unsupported');
 const imageUpload = document.getElementById('imageUpload');
 const canvas = document.getElementById('xr-canvas');
 
-if (navigator.xr) {
-  navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-    if (supported) {
-      app.classList.remove('hidden');
-    } else {
-      unsupported.classList.remove('hidden');
-    }
-  });
-} else {
-  unsupported.classList.remove('hidden');
-}
+// if (navigator.xr) {
+//   navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+//     if (supported) {
+//       app.classList.remove('hidden');
+//     } else {
+//       unsupported.classList.remove('hidden');
+//     }
+//   });
+// } else {
+//   unsupported.classList.remove('hidden');
+// }
 
 let scene, camera, renderer, controller, imageMesh;
 

@@ -1,21 +1,85 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WebXR AR Image Preview</title>
-  <script type="module" src="./src/main.js"></script>
-  <link rel="stylesheet" href="./src/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Image Placement</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        .hidden { display: none; }
+        #xr-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Below UI */
+        }
+        #ui {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10; /* Above AR content */
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+        }
+        #unsupported {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: sans-serif;
+            text-align: center;
+            z-index: 100;
+        }
+        #app {
+            /* This div wraps your main UI elements when AR is supported */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh; /* Takes full viewport height */
+            width: 100vw; /* Takes full viewport width */
+            position: absolute; /* To allow the canvas to be fixed */
+            top: 0;
+            left: 0;
+            z-index: 5; /* Between canvas and floating UI */
+        }
+        /* Style for the ARButton if needed */
+        .webxr-button {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 11; /* Above other UI */
+        }
+    </style>
 </head>
 <body>
-  <div id="unsupported" class="hidden">
-    <h1>AR Not Supported</h1>
-    <p>Your device or browser does not support WebXR with AR features.</p>
-  </div>
+    <div id="unsupported" class="hidden">
+        <p>Your browser does not support WebXR Augmented Reality or 'immersive-ar' sessions are not available.</p>
+        <p>Please try a compatible browser like Chrome on an ARCore-enabled Android device, or Safari on an ARKit-enabled iOS device.</p>
+    </div>
 
-  <div id="app" class="hidden">
-    <input type="file" id="imageUpload" accept="image/*" />
-    <button id="enter-ar">Enter AR</button>
+    <div id="app" class="hidden">
+        <div id="ui">
+            <h1>AR Image Placer</h1>
+            <input type="file" id="imageUpload" accept="image/*">
+            <p>Upload an image to place it in AR. Tap on a surface to place.</p>
+        </div>
+    </div>
+
     <canvas id="xr-canvas"></canvas>
-  </div>
+
+    <script type="module" src="src/main.js"></script>
 </body>
 </html>
