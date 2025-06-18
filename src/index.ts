@@ -1,119 +1,133 @@
-/// Zappar for ThreeJS Examples
-/// Instant Tracking 3D Model
-
-// In this example we track a 3D model using instant world tracking
-
 import * as THREE from 'three';
 import * as ZapparThree from '@zappar/zappar-threejs';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-const model = new URL('../assets/waving.glb', import.meta.url).href;
 import './index.css';
-// The SDK is supported on many different browsers, but there are some that
-// don't provide camera access. This function detects if the browser is supported
-// For more information on support, check out the readme over at
-// https://www.npmjs.com/package/@zappar/zappar-threejs
-if (ZapparThree.browserIncompatible()) {
-  // The browserIncompatibleUI() function shows a full-page dialog that informs the user
-  // they're using an unsupported browser, and provides a button to 'copy' the current page
-  // URL so they can 'paste' it into the address bar of a compatible alternative.
-  ZapparThree.browserIncompatibleUI();
 
-  // If the browser is not compatible, we can avoid setting up the rest of the page
-  // so we throw an exception here.
+// 📁 DOM UI
+const btnUpload = document.createElement('input');
+btnUpload.type = 'file';
+btnUpload.accept = 'image/*';
+btnUpload.id = 'imageUpload';
+btnUpload.style.cssText = `
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+`;
+document.body.appendChild(btnUpload);
+
+const btnPlace = document.createElement('button');
+btnPlace.textContent = 'Tap to Place';
+btnPlace.id = 'tap-to-place';
+btnPlace.style.cssText = `
+  display: none;
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  font-size: 18px;
+  z-index: 100;
+`;
+document.body.appendChild(btnPlace);
+
+// Check browser compatibility
+if (ZapparThree.browserIncompatible()) {
+  ZapparThree.browserIncompatibleUI();
   throw new Error('Unsupported browser');
 }
 
-// ZapparThree provides a LoadingManager that shows a progress bar while
-// the assets are downloaded. You can use this if it's helpful, or use
-// your own loading UI - it's up to you :-)
 const manager = new ZapparThree.LoadingManager();
 
-// Construct our ThreeJS renderer and scene as usual
+// Scene & renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-const scene = new THREE.Scene();
+renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// As with a normal ThreeJS scene, resize the canvas if the window resizes
-renderer.setSize(window.innerWidth, window.innerHeight);
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Create a Zappar camera that we'll use instead of a ThreeJS camera
+// 🚀 Zappar camera
 const camera = new ZapparThree.Camera();
-
-// In order to use camera and motion data, we need to ask the users for permission
-// The Zappar library comes with some UI to help with that, so let's use it
-ZapparThree.permissionRequestUI().then((granted) => {
-  // If the user granted us the permissions we need then we can start the camera
-  // Otherwise let's them know that it's necessary with Zappar's permission denied UI
+ZapparThree.permissionRequestUI().then(granted => {
   if (granted) camera.start();
   else ZapparThree.permissionDeniedUI();
 });
-
-// The Zappar component needs to know our WebGL context, so set it like this:
 ZapparThree.glContextSet(renderer.getContext());
-
-// Set the background of our scene to be the camera background texture
-// that's provided by the Zappar camera
+document.body.style.background = 'black';
 scene.background = camera.backgroundTexture;
 
-// Create an InstantWorldTracker and wrap it in an InstantWorldAnchorGroup for us
-// to put our ThreeJS content into
+const scene = new THREE.Scene();
+
+// Instant world tracking
 const instantTracker = new ZapparThree.InstantWorldTracker();
-const instantTrackerGroup = new ZapparThree.InstantWorldAnchorGroup(camera, instantTracker);
+const instantGroup = new ZapparThree.InstantWorldAnchorGroup(camera, instantTracker);
+scene.add(instantGroup);
 
-// Add our instant tracker group into the ThreeJS scene
-scene.add(instantTrackerGroup);
+// Lighting
+const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+light.position.set(0.5, 1, 0.25);
+instantGroup.add(light);
 
-// Load a 3D model to place within our group (using ThreeJS's GLTF loader)
-// Pass our loading manager in to ensure the progress bar works correctly
-const gltfLoader = new GLTFLoader(manager);
+// 📸 User-uploaded image texture placeholder
+let userTexture: THREE.Texture | null = null;
+let userPlane: THREE.Mesh | null = null;
+let placed = false;
 
-gltfLoader.load(model, (gltf) => {
-  // Now the model has been loaded, we can add it to our instant_tracker_group
-  instantTrackerGroup.add(gltf.scene);
-}, undefined, () => {
-  console.log('An error ocurred loading the GLTF model');
-});
+// Load user image
+btnUpload.onchange = (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
 
-// Let's add some lighting, first a directional light above the model pointing down
-const directionalLight = new THREE.DirectionalLight('white', 0.8);
-directionalLight.position.set(0, 5, 0);
-directionalLight.lookAt(0, 0, 0);
-instantTrackerGroup.add(directionalLight);
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      userTexture = new THREE.Texture(img);
+      userTexture.needsUpdate = true;
 
-// And then a little ambient light to brighten the model up a bit
-const ambientLight = new THREE.AmbientLight('white', 0.4);
-instantTrackerGroup.add(ambientLight);
+      // Create a plane with that texture
+      const ar = img.width / img.height;
+      const height = 0.5;
+      const width = height * ar;
 
-// When the experience loads we'll let the user choose a place in their room for
-// the content to appear using setAnchorPoseFromCameraOffset (see below)
-// The user can confirm the location by tapping on the screen
-let hasPlaced = false;
-const placeButton = document.getElementById('tap-to-place') || document.createElement('div');
-placeButton.addEventListener('click', () => {
-  hasPlaced = true;
-  placeButton.remove();
-});
+      const geom = new THREE.PlaneGeometry(width, height);
+      const mat = new THREE.MeshBasicMaterial({
+        map: userTexture!,
+        side: THREE.DoubleSide
+      });
 
-// Use a function to render our scene as usual
-function render(): void {
-  if (!hasPlaced) {
-    // If the user hasn't chosen a place in their room yet, update the instant tracker
-    // to be directly in front of the user
-    instantTrackerGroup.setAnchorPoseFromCameraOffset(0, 0, -5);
+      userPlane = new THREE.Mesh(geom, mat);
+      userPlane.visible = false;
+      instantGroup.add(userPlane!);
+
+      // Enable placement
+      btnPlace.style.display = 'block';
+    };
+    img.src = reader.result as string;
+  };
+  reader.readAsDataURL(file);
+};
+
+// Place on tap
+btnPlace.onclick = () => {
+  if (!userPlane) return;
+  placed = true;
+  userPlane!.visible = true;
+  btnPlace.style.display = 'none';
+  btnUpload.style.display = 'none';
+};
+
+// 🎥 Render loop
+function render() {
+  if (!placed && userPlane) {
+    // Keep it slightly in front till placed
+    instantGroup.setAnchorPoseFromCameraOffset(0, 0, -2);
   }
 
-  // The Zappar camera must have updateFrame called every frame
   camera.updateFrame(renderer);
-
-  // Draw the ThreeJS scene in the usual way, but using the Zappar camera
   renderer.render(scene, camera);
-
-  // Call render() again next frame
   requestAnimationFrame(render);
 }
 
-// Start things off
 render();
