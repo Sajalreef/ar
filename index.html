@@ -44,10 +44,10 @@
   <div id="ar-container">
     <canvas></canvas>
     <div id="ui-overlay">
-      <button id="start-ar">Start AR</button>
-      <button id="select-image" style="display:none">Select Image</button>
+<button id="start-ar" style="display: none;">Start AR</button>
+<button id="select-image">Select Image</button>
       <button id="place-image" style="display:none">Place Image</button>
-      <input id="file-input" type="file" accept="image/*" />
+<input type="file" id="file-input" accept="image/*" />
     </div>
     <div id="scale-controls">
       <button id="scale-down" class="scale-btn">-</button>
@@ -96,39 +96,35 @@
       renderer.setAnimationLoop(()=>renderer.render(scene, camera));
     }
 
-    function setupUI(){
-      document.getElementById('start-ar').onclick = startAR;
-      document.getElementById('select-image').onclick = () => fileInput.click();
-      document.getElementById('place-image').onclick = () => {
-        if(!selectedImageUrl) return alert('Select an image first');
+    function setupUI() {
+    // Select image FIRST, then enable AR
+    document.getElementById('select-image').addEventListener('click', () => {
+        document.getElementById('file-input').click();
+    });
+
+    document.getElementById('file-input').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            selectedImageUrl = URL.createObjectURL(file);
+            document.getElementById('start-ar').style.display = 'block';
+            document.getElementById('select-image').style.display = 'none';
+        }
+    });
+
+    // Start AR after selecting image
+    document.getElementById('start-ar').addEventListener('click', async () => {
+        await startAR(); // Starts WebXR session
+    });
+
+    // Place button only appears once inside AR session
+    document.getElementById('place-image').addEventListener('click', () => {
+        if (!selectedImageUrl) return alert("Please select image first");
+        isPlacingMode = true;
         document.getElementById('scale-controls').style.display = 'flex';
-        if(reticle) reticle.visible = true;
-      };
-      document.getElementById('file-input').onchange = e=>{
-        const file = e.target.files[0];
-        if(file) {
-          selectedImageUrl = URL.createObjectURL(file);
-          document.getElementById('place-image').style.display = 'block';
-        }
-      };
-      document.getElementById('scale-up').onclick = ()=>{
-        currentScale*=1.1;
-        if(tempMesh) tempMesh.scale.set(currentScale,currentScale,currentScale);
-      };
-      document.getElementById('scale-down').onclick = ()=>{
-        currentScale*=0.9;
-        if(tempMesh) tempMesh.scale.set(currentScale,currentScale,currentScale);
-      };
-      document.getElementById('confirm-placement').onclick = ()=>{
-        if(tempMesh){
-          scene.remove(tempMesh);
-          tempMesh = null;
-        }
-        document.getElementById('scale-controls').style.display = 'none';
-        if(reticle) reticle.visible = false;
-        currentScale = 1;
-      };
-    }
+        if (reticle) reticle.visible = true;
+    });
+}
+
 
     function createReticle(){
       const geo = new THREE.RingGeometry(0.07, 0.1, 32);
