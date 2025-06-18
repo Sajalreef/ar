@@ -1,37 +1,168 @@
-
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WebAR Image Placement</title>
-  <style>
-    body { margin: 0; overflow: hidden; font-family: sans-serif; }
-    #ui {
-      position: absolute; top: 10px; left: 10px; z-index: 10;
-      background: rgba(0,0,0,0.6); padding: 10px; border-radius: 10px; color: white;
-    }
-    #scale-controls {
-      display: none; gap: 10px; margin-top: 10px;
-    }
-    input[type="file"] {
-      background: white; color: black; border-radius: 5px;
-    }
-    button {
-      padding: 6px 12px; border: none; background: #00d084; color: white;
-      border-radius: 6px; cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <div id="ui">
-    <input type="file" accept="image/*" id="imageInput" />
-    <button id="placeBtn">Place Image</button>
-    <div id="scale-controls">
-      <button id="scaleUp">+</button>
-      <button id="scaleDown">-</button>
-    </div>
-  </div>
-  <script type="module" src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebAR Image Placement</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: sans-serif;
+        background: #000;
+      }
+
+      #startButton,
+      #fileInput,
+      #placeButton {
+        position: absolute;
+        z-index: 100;
+        padding: 10px 20px;
+        font-size: 16px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: 1px solid white;
+        border-radius: 8px;
+      }
+
+      #startButton {
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      #fileInput {
+        top: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      #placeButton {
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="startButton">Start AR</button>
+    <input type="file" accept="image/*" id="fileInput" />
+    <button id="placeButton">📍 Place Image</button>
+
+    <script type="module">
+      import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.module.js';
+      import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/webxr/ARButton.js';
+
+      let camera, scene, renderer;
+      let controller;
+      let reticle;
+      let imageTexture = null;
+
+      const startButton = document.getElementById('startButton');
+      const fileInput = document.getElementById('fileInput');
+      const placeButton = document.getElementById('placeButton');
+
+      startButton.addEventListener('click', async () => {
+        init();
+        renderer.xr.enabled = true;
+
+        document.body.appendChild(
+          ARButton.createButton(renderer, {
+            requiredFeatures: ['hit-test'],
+          })
+        );
+
+        document.body.removeChild(startButton);
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const img = new Image();
+          img.onload = function () {
+            const texture = new THREE.Texture(img);
+            texture.needsUpdate = true;
+            imageTexture = texture;
+            placeButton.style.display = 'block';
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      function init() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          0.01,
+          20
+        );
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.xr.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+        scene.add(light);
+
+        // Reticle
+        const ringGeometry = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
+        const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        reticle = new THREE.Mesh(ringGeometry, ringMaterial);
+        reticle.matrixAutoUpdate = false;
+        reticle.visible = false;
+        scene.add(reticle);
+
+        controller = renderer.xr.getController(0);
+        scene.add(controller);
+
+        const session = renderer.xr.getSession();
+
+        session.requestReferenceSpace('viewer').then((referenceSpace) => {
+          session
+            .requestHitTestSource({ space: referenceSpace })
+            .then((source) => {
+              renderer.setAnimationLoop((timestamp, frame) => {
+                if (frame) {
+                  const referenceSpace = renderer.xr.getReferenceSpace();
+                  const hitTestResults = frame.getHitTestResults(source);
+                  if (hitTestResults.length > 0) {
+                    const hit = hitTestResults[0];
+                    const pose = hit.getPose(referenceSpace);
+                    reticle.visible = true;
+                    reticle.matrix.fromArray(pose.transform.matrix);
+                  } else {
+                    reticle.visible = false;
+                  }
+                }
+
+                renderer.render(scene, camera);
+              });
+
+              placeButton.addEventListener('click', () => {
+                if (reticle.visible && imageTexture) {
+                  const material = new THREE.MeshBasicMaterial({
+                    map: imageTexture,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                  });
+                  const geometry = new THREE.PlaneGeometry(0.5, 0.5);
+                  const plane = new THREE.Mesh(geometry, material);
+                  plane.position.setFromMatrixPosition(reticle.matrix);
+                  plane.quaternion.setFromRotationMatrix(reticle.matrix);
+                  scene.add(plane);
+                }
+              });
+            });
+        });
+      }
+    </script>
+  </body>
 </html>
