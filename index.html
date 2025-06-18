@@ -1,65 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>ZapWorks WebAR</title>
-  <script src="https://cdn.jsdelivr.net/npm/@zappar/threejs@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-  <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>AR Image Placement</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif;
+        }
+        #ar-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ar-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        button {
+            pointer-events: auto;
+            background: rgba(255,255,255,0.8);
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #scale-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: auto;
+        }
+        .scale-btn {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 10px;
+        }
+        #file-input {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <script>
-    // Create Zappar camera
-    const camera = new ZapparThree.Camera();
+    <div id="ar-container">
+        <canvas id="ar-canvas"></canvas>
+        
+        <div id="ui-overlay">
+            <button id="start-ar">Start AR</button>
+            <button id="place-image">Place Image</button>
+            <button id="select-image">Select Image</button>
+            <input type="file" id="file-input" accept="image/*">
+        </div>
+        
+        <div id="scale-controls" style="display: none;">
+            <button class="scale-btn" id="scale-down">-</button>
+            <button class="scale-btn" id="scale-up">+</button>
+            <button class="scale-btn" id="confirm-placement">✓</button>
+        </div>
+    </div>
 
-    // Set up Three.js scene
-    const scene = new THREE.Scene();
-    scene.background = camera.backgroundTexture;
-
-    // Set up renderer
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    // Add light
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(1, 2, 3);
-    scene.add(light);
-
-    // Start camera
-    ZapparThree.permissionRequestUI().then(granted => {
-      if (granted) {
-        ZapparThree.permissionGrantedUI();
-        camera.start();
-      } else {
-        ZapparThree.permissionDeniedUI();
-      }
-    });
-
-    // Add camera to scene
-    scene.add(camera);
-
-    // Create anchor (use Instant World Tracking)
-    const instantTracker = new ZapparThree.InstantWorldTracker();
-    const anchorGroup = new ZapparThree.InstantWorldAnchorGroup(camera, instantTracker);
-    scene.add(anchorGroup);
-
-    // Add image to place
-    const texture = new THREE.TextureLoader().load("your-image.png");
-    const geometry = new THREE.PlaneGeometry(0.5, 0.3);
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-    const plane = new THREE.Mesh(geometry, material);
-    anchorGroup.add(plane);
-
-    // Animate
-    function animate() {
-      renderer.render(scene, camera);
-      requestAnimationFrame(animate);
-    }
-    animate();
-  </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/TextureLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.js"></script>
+    <script src="./app.js"></script>
 </body>
 </html>
