@@ -1,109 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Image Placement</title>
-    <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            font-family: Arial, sans-serif;
-            touch-action: none;
-        }
-        #ar-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
-        #ar-canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        #ui-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 20px;
-            box-sizing: border-box;
-            pointer-events: none;
-            z-index: 10;
-        }
-        button {
-            pointer-events: auto;
-            background: rgba(255,255,255,0.8);
-            border: none;
-            padding: 10px 15px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        #scale-controls {
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            width: 100%;
-            display: none;
-            justify-content: center;
-            pointer-events: auto;
-            z-index: 10;
-        }
-        .scale-btn {
-            background: rgba(0,0,0,0.5);
-            color: white;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 15px;
-            border: 2px solid white;
-        }
-        #file-input {
-            display: none;
-        }
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 100;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AR Image Placement</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; touch-action: none; }
+    #ar-container { position: relative; width: 100vw; height: 100vh; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #ui-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; padding: 20px;
+      box-sizing: border-box; pointer-events: none; z-index: 10;
+    }
+    button { pointer-events: auto; background: rgba(255,255,255,0.8);
+      border: none; padding: 10px 15px; margin: 5px; border-radius: 5px;
+      cursor: pointer; font-size: 16px; }
+    #scale-controls {
+      position: absolute; bottom: 20px; left: 0; width: 100%;
+      display: none; justify-content: center; pointer-events: auto; z-index: 10;
+    }
+    .scale-btn {
+      background: rgba(0,0,0,0.5); color: white; width: 50px; height: 50px;
+      border-radius: 50%; font-size: 24px; display: flex;
+      align-items: center; justify-content: center; margin: 0 15px;
+      border: 2px solid white;
+    }
+    #file-input { display: none; }
+   #loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  border-radius: 10px;
+  z-index: 100;
+}
+
+  </style>
 </head>
 <body>
-    <div id="ar-container">
-        <canvas id="ar-canvas"></canvas>
-        
-        <div id="ui-overlay">
-            <button id="start-ar">Start AR</button>
-            <button id="place-image" style="display: none;">Place Image</button>
-            <button id="select-image" style="display: none;">Select Image</button>
-            <input type="file" id="file-input" accept="image/*">
-        </div>
-        
-        <div id="scale-controls">
-            <button class="scale-btn" id="scale-down">-</button>
-            <button class="scale-btn" id="scale-up">+</button>
-            <button class="scale-btn" id="confirm-placement">✓</button>
-        </div>
-        
-        <div id="loading">Loading AR experience...</div>
+  <div id="ar-container">
+    <canvas></canvas>
+    <div id="ui-overlay">
+      <button id="start-ar">Start AR</button>
+      <button id="select-image" style="display:none">Select Image</button>
+      <button id="place-image" style="display:none">Place Image</button>
+      <input id="file-input" type="file" accept="image/*" />
     </div>
+    <div id="scale-controls">
+      <button id="scale-down" class="scale-btn">-</button>
+      <button id="scale-up" class="scale-btn">+</button>
+      <button id="confirm-placement" class="scale-btn">✓</button>
+    </div>
+    <div id="loading">Loading AR experience...</div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/TextureLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.js"></script>
-    <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.js"></script>
+  <script>
+    let camera, scene, renderer, controller;
+    let hitTestSource = null;
+    let reticle, tempMesh = null;
+    let selectedImageUrl = null;
+    let currentScale = 1;
+    let referenceSpace;
+    let arSession = null;
+
+    init();
+
+    async function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+      renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      document.querySelector('canvas').replaceWith(renderer.domElement);
+
+      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2);
+      light.position.set(0.5,1,0.25);
+      scene.add(light);
+
+      createReticle();
+      setupUI();
+
+      window.addEventListener('resize', ()=> {
+        camera.aspect = window.innerWidth/window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      document.getElementById('loading').style.display = 'none';
+      renderer.setAnimationLoop(()=>renderer.render(scene, camera));
+    }
+
+    function setupUI(){
+      document.getElementById('start-ar').onclick = startAR;
+      document.getElementById('select-image').onclick = () => fileInput.click();
+      document.getElementById('place-image').onclick = () => {
+        if(!selectedImageUrl) return alert('Select an image first');
+        document.getElementById('scale-controls').style.display = 'flex';
+        if(reticle) reticle.visible = true;
+      };
+      document.getElementById('file-input').onchange = e=>{
+        const file = e.target.files[0];
+        if(file) {
+          selectedImageUrl = URL.createObjectURL(file);
+          document.getElementById('place-image').style.display = 'block';
+        }
+      };
+      document.getElementById('scale-up').onclick = ()=>{
+        currentScale*=1.1;
+        if(tempMesh) tempMesh.scale.set(currentScale,currentScale,currentScale);
+      };
+      document.getElementById('scale-down').onclick = ()=>{
+        currentScale*=0.9;
+        if(tempMesh) tempMesh.scale.set(currentScale,currentScale,currentScale);
+      };
+      document.getElementById('confirm-placement').onclick = ()=>{
+        if(tempMesh){
+          scene.remove(tempMesh);
+          tempMesh = null;
+        }
+        document.getElementById('scale-controls').style.display = 'none';
+        if(reticle) reticle.visible = false;
+        currentScale = 1;
+      };
+    }
+
+    function createReticle(){
+      const geo = new THREE.RingGeometry(0.07, 0.1, 32);
+      const mat = new THREE.MeshBasicMaterial({ color:0xffffff, opacity:0.8, transparent:true });
+      reticle = new THREE.Mesh(geo, mat);
+      reticle.rotation.x = -Math.PI/2;
+      reticle.visible = false;
+      scene.add(reticle);
+    }
+
+    async function startAR(){
+      if(!navigator.xr) return alert('WebXR not supported');
+      if(!await navigator.xr.isSessionSupported('immersive-ar'))
+        return alert('AR not supported on this device');
+
+      arSession = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures:['hit-test','local'], optionalFeatures:['dom-overlay'],
+        domOverlay:{root:document.body}
+      });
+
+      renderer.xr.setReferenceSpaceType('local');
+      await renderer.xr.setSession(arSession);
+      referenceSpace = await arSession.requestReferenceSpace('local');
+      const viewerRef = await arSession.requestReferenceSpace('viewer');
+      hitTestSource = await arSession.requestHitTestSource({space:viewerRef});
+
+      controller = renderer.xr.getController(0);
+      controller.addEventListener('select', onSelect);
+      scene.add(controller);
+
+      document.getElementById('start-ar').style.display = 'none';
+      document.getElementById('select-image').style.display = 'block';
+
+      arSession.addEventListener('end', ()=>{
+        arSession = null;
+        document.getElementById('start-ar').style.display = 'block';
+        document.getElementById('select-image').style.display = 'none';
+        document.getElementById('place-image').style.display = 'none';
+        if(tempMesh){ scene.remove(tempMesh); tempMesh=null; }
+        if(reticle) reticle.visible=false;
+        renderer.setAnimationLoop(()=>renderer.render(scene, camera));
+      });
+
+      renderer.setAnimationLoop((timestamp,frame)=>render(frame));
+    }
+
+    async function onSelect(){
+      if(!selectedImageUrl || !hitTestSource) return;
+
+      const frame = renderer.xr.getFrame();
+      const hits = frame.getHitTestResults(hitTestSource);
+      if(hits.length === 0) return;
+
+      const hit = hits[0];
+      const pose = hit.getPose(referenceSpace);
+      if(!pose) return;
+
+      tempMesh = await createImageMesh(selectedImageUrl);
+      tempMesh.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+      tempMesh.scale.set(currentScale,currentScale,currentScale);
+      scene.add(tempMesh);
+    }
+
+    function createImageMesh(url){
+      return new Promise((res,rej)=>{
+        new THREE.TextureLoader().load(
+          url,
+          tex=>{
+            const ar = tex.image.width/tex.image.height;
+            const w = 0.5, h = w/ar;
+            const mat = new THREE.MeshBasicMaterial({ map:tex, side:THREE.DoubleSide, transparent:true });
+            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w,h), mat);
+            mesh.rotation.x = -Math.PI/2;
+            res(mesh);
+          },
+          undefined,
+          rej
+        );
+      });
+    }
+
+    function render(frame){
+      if(!frame || !arSession) return renderer.render(scene, camera);
+
+      const pose = frame.getViewerPose(referenceSpace);
+      if(!pose) return;
+
+      if(hitTestSource){
+        const hits = frame.getHitTestResults(hitTestSource);
+        if(hits.length>0){
+          const hit = hits[0];
+          const p = hit.getPose(referenceSpace).transform.matrix;
+          const mat = new THREE.Matrix4().fromArray(p);
+          reticle.visible = true;
+          reticle.position.setFromMatrixPosition(mat);
+          if(tempMesh){
+            tempMesh.position.setFromMatrixPosition(mat);
+            const cp = new THREE.Vector3();
+            camera.getWorldPosition(cp);
+            tempMesh.lookAt(cp);
+            tempMesh.rotation.x += Math.PI/2;
+          }
+        } else reticle.visible=false;
+      }
+
+      renderer.render(scene, camera);
+    }
+  </script>
 </body>
 </html>
