@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Image Placement</title>
     <style>
         body { 
             margin: 0; 
             overflow: hidden; 
             font-family: Arial, sans-serif;
+            touch-action: none;
         }
         #ar-container {
             position: relative;
@@ -28,6 +29,7 @@
             padding: 20px;
             box-sizing: border-box;
             pointer-events: none;
+            z-index: 10;
         }
         button {
             pointer-events: auto;
@@ -37,30 +39,44 @@
             margin: 5px;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
         }
         #scale-controls {
             position: absolute;
             bottom: 20px;
             left: 0;
             width: 100%;
-            display: flex;
+            display: none;
             justify-content: center;
             pointer-events: auto;
+            z-index: 10;
         }
         .scale-btn {
             background: rgba(0,0,0,0.5);
             color: white;
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            font-size: 20px;
+            font-size: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 10px;
+            margin: 0 15px;
+            border: 2px solid white;
         }
         #file-input {
             display: none;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
         }
     </style>
 </head>
@@ -70,22 +86,24 @@
         
         <div id="ui-overlay">
             <button id="start-ar">Start AR</button>
-            <button id="place-image">Place Image</button>
-            <button id="select-image">Select Image</button>
+            <button id="place-image" style="display: none;">Place Image</button>
+            <button id="select-image" style="display: none;">Select Image</button>
             <input type="file" id="file-input" accept="image/*">
         </div>
         
-        <div id="scale-controls" style="display: none;">
+        <div id="scale-controls">
             <button class="scale-btn" id="scale-down">-</button>
             <button class="scale-btn" id="scale-up">+</button>
             <button class="scale-btn" id="confirm-placement">✓</button>
         </div>
+        
+        <div id="loading">Loading AR experience...</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/TextureLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.js"></script>
-    <script src="./app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
