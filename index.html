@@ -23,7 +23,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,user-scalable=no,minimal-ui" />
-    <title>AR Image on Wall</title>
+    <title>AR Image with Dimensions</title>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
     <script src='https://libs.zappar.com/zappar-threejs/2.0.6/zappar-threejs.js'></script>
     <link rel='stylesheet' type='text/css' href='style.css'>
@@ -34,6 +34,11 @@
         <label for="image-upload">Choose an image</label>
     </div>
     <div id="zappar-placement-ui">Tap here to place the image on the wall</div>
+    <div id="controls-ui">
+        <button id="move-btn">Move</button>
+        <button id="resize-btn">Resize</button>
+        <div id="dimensions-display">Size: 0cm × 0cm</div>
+    </div>
     <script type="module" src="index.js"></script>
 </body>
 </html>
