@@ -9,7 +9,6 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// UI Elements
 const imageUpload = document.getElementById('image-upload');
 const uploadContainer = document.getElementById('image-upload-container');
 const placementUI = document.getElementById('placement-ui');
@@ -98,11 +97,29 @@ document.addEventListener('pointerup', () => {
   isResizing = false;
 });
 
-const arBtn = ARButton.createButton(renderer, {
-  requiredFeatures: ['hit-test', 'dom-overlay'],
-  domOverlay: { root: document.body }
-});
-document.body.appendChild(arBtn);
+async function checkCameraPermissionAndShowARButton() {
+  try {
+    const permission = await navigator.permissions.query({ name: 'camera' });
+    if (permission.state === 'granted' || permission.state === 'prompt') {
+      const arBtn = ARButton.createButton(renderer, {
+        requiredFeatures: ['hit-test', 'dom-overlay'],
+        domOverlay: { root: document.body }
+      });
+      document.body.appendChild(arBtn);
+    } else {
+      alert("Camera permission denied. Please allow camera access for AR to work.");
+    }
+  } catch (e) {
+    console.warn("Permissions API not supported, trying fallback.");
+    const arBtn = ARButton.createButton(renderer, {
+      requiredFeatures: ['hit-test', 'dom-overlay'],
+      domOverlay: { root: document.body }
+    });
+    document.body.appendChild(arBtn);
+  }
+}
+
+checkCameraPermissionAndShowARButton();
 
 renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
