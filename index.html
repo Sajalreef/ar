@@ -62,11 +62,26 @@
   <title>WebXR Image Placement</title>
   <style>
     body { margin: 0; overflow: hidden; }
-    #image-upload { position: absolute; z-index: 1; top: 10px; left: 10px; }
+    #overlay {
+      position: absolute;
+      z-index: 2;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 10px;
+    }
+    #image-upload {
+      color: white;
+    }
   </style>
 </head>
 <body>
-  <input type="file" id="image-upload" accept="image/*" />
+  <!-- DOM Overlay container -->
+  <div id="overlay">
+    <input type="file" id="image-upload" accept="image/*" />
+  </div>
+
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.0';
 
@@ -98,14 +113,16 @@
       reticle.visible = false;
       scene.add(reticle);
 
-      // Controller for tap placement
+      // Controller
       controller = renderer.xr.getController(0);
       controller.addEventListener('select', onSelect);
       scene.add(controller);
 
-      // XR session setup
+      // Start AR session with DOM overlay
       const session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test']
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay'],
+        domOverlay: { root: document.getElementById('overlay') }
       });
       renderer.xr.setSession(session);
 
