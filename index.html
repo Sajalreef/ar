@@ -56,102 +56,121 @@
 </html> -->
 
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>WebXR AR Hit Test</title>
-    <style>
-      body { margin: 0; overflow: hidden; }
-      canvas { display: block; }
-    </style>
-  </head>
-  <body>
-    <script type="module">
-      import * as THREE from 'https://cdn.skypack.dev/three@0.150.0';
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebXR Image Placement</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #image-upload { position: absolute; z-index: 1; top: 10px; left: 10px; }
+  </style>
+</head>
+<body>
+  <input type="file" id="image-upload" accept="image/*" />
+  <script type="module">
+    import * as THREE from 'https://cdn.skypack.dev/three@0.150.0';
 
-      let scene, camera, renderer, reticle, controller, imageMesh = null;
-      let hitTestSource = null, hitTestRequested = false;
+    let scene, camera, renderer, reticle, controller;
+    let imageMesh = null;
+    let hitTestSource = null;
+    let referenceSpace = null;
+    let uploadedTexture = null;
 
-      init();
-      animate();
+    init();
 
-      async function init() {
-        scene = new THREE.Scene();
+    async function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera();
 
-        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      document.body.appendChild(renderer.domElement);
 
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.xr.enabled = true;
-        document.body.appendChild(renderer.domElement);
+      // Light
+      scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-        // Light
-        const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-        scene.add(light);
+      // Reticle
+      const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      reticle = new THREE.Mesh(ringGeo, ringMat);
+      reticle.matrixAutoUpdate = false;
+      reticle.visible = false;
+      scene.add(reticle);
 
-        // Reticle
-        const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        reticle = new THREE.Mesh(ringGeo, ringMat);
-        reticle.matrixAutoUpdate = false;
-        reticle.visible = false;
-        scene.add(reticle);
+      // Controller for tap placement
+      controller = renderer.xr.getController(0);
+      controller.addEventListener('select', onSelect);
+      scene.add(controller);
 
-        // Controller
-        controller = renderer.xr.getController(0);
-        controller.addEventListener('select', onSelect);
-        scene.add(controller);
+      // XR session setup
+      const session = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test']
+      });
+      renderer.xr.setSession(session);
 
-        // Start session
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test']
+      referenceSpace = await session.requestReferenceSpace('local');
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+      session.addEventListener('end', () => {
+        hitTestSource = null;
+      });
+
+      renderer.setAnimationLoop(render);
+    }
+
+    function onSelect() {
+      if (reticle.visible && uploadedTexture && !imageMesh) {
+        const geometry = new THREE.PlaneGeometry(0.5, 0.5);
+        const material = new THREE.MeshBasicMaterial({
+          map: uploadedTexture,
+          side: THREE.DoubleSide,
+          transparent: true,
         });
-        renderer.xr.setSession(session);
 
-        const referenceSpace = await session.requestReferenceSpace('local');
-        const viewerSpace = await session.requestReferenceSpace('viewer');
-        hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-        session.addEventListener('end', () => {
-          hitTestSource = null;
-        });
-
-        renderer.setAnimationLoop((timestamp, frame) => {
-          if (frame) {
-            const hitTestResults = frame.getHitTestResults(hitTestSource);
-            if (hitTestResults.length > 0) {
-              const hit = hitTestResults[0];
-              const pose = hit.getPose(referenceSpace);
-              if (pose) {
-                reticle.visible = true;
-                reticle.matrix.fromArray(pose.transform.matrix);
-              }
-            } else {
-              reticle.visible = false;
-            }
-          }
-          renderer.render(scene, camera);
-        });
+        imageMesh = new THREE.Mesh(geometry, material);
+        imageMesh.position.setFromMatrixPosition(reticle.matrix);
+        imageMesh.quaternion.setFromRotationMatrix(reticle.matrix);
+        scene.add(imageMesh);
       }
+    }
 
-      function onSelect() {
-        if (reticle.visible && !imageMesh) {
-          const geo = new THREE.PlaneGeometry(0.5, 0.3);
-          const tex = new THREE.TextureLoader().load('your-image.jpg');
-          const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
-          imageMesh = new THREE.Mesh(geo, mat);
-          imageMesh.position.setFromMatrixPosition(reticle.matrix);
-          imageMesh.quaternion.setFromRotationMatrix(reticle.matrix);
-          scene.add(imageMesh);
+    function render(timestamp, frame) {
+      if (frame && hitTestSource) {
+        const hitTestResults = frame.getHitTestResults(hitTestSource);
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0];
+          const pose = hit.getPose(referenceSpace);
+          if (pose) {
+            reticle.visible = true;
+            reticle.matrix.fromArray(pose.transform.matrix);
+          }
+        } else {
+          reticle.visible = false;
         }
       }
+      renderer.render(scene, camera);
+    }
 
-      function animate() {
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
-        });
-      }
-    </script>
-  </body>
+    // Handle image upload
+    const input = document.getElementById('image-upload');
+    input.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          const texture = new THREE.Texture(img);
+          texture.needsUpdate = true;
+          uploadedTexture = texture;
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
+</body>
 </html>
