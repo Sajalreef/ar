@@ -1,83 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebXR Image Placement (Zappar Alternative)</title>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
-        #ar-button {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 10px 20px;
-            font-size: 1.2em;
-            cursor: pointer;
-            z-index: 100;
-        }
-        #placement-ui, #controls-ui {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.5);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            display: none; /* Hidden by default */
-            z-index: 99;
-        }
-        #controls-ui {
-            top: unset;
-            bottom: 20px;
-        }
-        #image-upload-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 101;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            color: white;
-        }
-        #dimensions-display {
-            margin-top: 10px;
-            font-size: 0.9em;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebXR Image Placement</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #ar-button {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      font-size: 1.2em;
+      cursor: pointer;
+      z-index: 100;
+    }
+    #placement-ui, #controls-ui {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+      z-index: 99;
+    }
+    #controls-ui { top: unset; bottom: 20px; }
+    #image-upload-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 101;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      color: white;
+    }
+    #dimensions-display {
+      margin-top: 10px;
+      font-size: 0.9em;
+    }
+  </style>
 </head>
 <body>
-    <div id="image-upload-container">
-        <h2>Upload Image for AR</h2>
-        <input type="file" id="image-upload" accept="image/*">
-    </div>
+  <div id="image-upload-container">
+    <h2>Upload Image for AR</h2>
+    <input type="file" id="image-upload" accept="image/*" />
+  </div>
+  <button id="ar-button">Start AR</button>
+  <div id="placement-ui">
+    <p>Tap to place the image.</p>
+    <button id="place-btn" style="display: none;">Place Image</button>
+  </div>
+  <div id="controls-ui">
+    <button id="move-btn">Move</button>
+    <button id="resize-btn">Resize</button>
+    <p id="dimensions-display">Dimensions: <span>0x0 cm</span></p>
+  </div>
 
-    <button id="ar-button">Start AR</button>
-
-    <div id="placement-ui">
-        <p>Tap to place the image.</p>
-        <button id="place-btn" style="display: none;">Place Image</button>
-    </div>
-
-    <div id="controls-ui">
-        <button id="move-btn">Move</button>
-        <button id="resize-btn">Resize</button>
-        <p id="dimensions-display">Dimensions: <span>0x0 cm</span></p>
-    </div>
-
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
-            }
-        }
-    </script>
-    <script type="module" src="main.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
