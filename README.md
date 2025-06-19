@@ -1,42 +1,28 @@
-# Zappar for ThreeJS Example
-​
-This repository contains an AR example using the Zappar SDK for ThreeJS. This specific example uses `parcel` to compile and bundle the assets and code, and TypeScript to get full auto-complete and compile-time error checking.
-​
-To learn more about Zappar for ThreeJS, head over to the [Zappar for ThreeJS](https://www.npmjs.com/package/@zappar/zappar-threejs) (@zappar/zappar-threejs) page on npm.
-​
+# Zappar for ThreeJS
+## Standalone Bootstrap Project
+
+In this project you'll find the following files that get you up and running with Zappar for ThreeJS.
+- *index.html*: contains the basic structure of you page and any necessary HTML UI elements
+- *index.js*: contains the code the sets up your ThreeJS scene and AR experience
+- *style.css*: contains the CSS for your page
+
+Head to the NPM package page for more information on how to build best-in-class AR experiences: [Zappar for ThreeJS](https://www.npmjs.com/package/@zappar/zappar-threejs) (@zappar/zappar-threejs)
+
 ## Preview
-​
 Scan the QR code below using your native camera app or QR code reader to view the example:
 ​
 ![Preview QR Code"](preview-qr-code.png)
-​
-## Prerequisites
-​
-To get started you'll want to ensure you have:
-​
-- installed Node.js version 10 or later
-- printed out the example target image, `example-tracking-image.png` (image tracked projects only)
-​
-## Running the Project
-​
-Once you have cloned this repository, open a terminal in the root directory of this project and follow these steps to get started.
-​
-Install the dependencies by running:
-​
-```bash
-npm install
+
+### Local Preview and Testing
+
+Due to browser restrictions surrounding use of the camera, you must use HTTPS to view or preview your site, even if doing so locally from your computer. If you're using `webpack`, consider using `webpack-dev-server` which has an `https` option to enable this.
+
+Alternatively you can use the [ZapWorks command-line tool](https://www.npmjs.com/package/@zappar/zapworks-cli) to serve a folder over HTTPS for access on your local computer, like this:
 ```
-​
-Next, run the project using the following command:
-​
-```bash
-npm start
+zapworks serve .
 ```
-​
-The `parcel` tool will host the content locally and give you an address you can open in your browser of your local machine.
-​
-We recommend launching **instant world tracking** and **image tracked** projects on a mobile device to get the best user experience. If you'd like to try on a mobile device, follow these steps:
-​
-1. Ensure the device is on the same local network (e.g. Wifi)
-2. Find out the IP address of your computer
-3. On your mobile device, visit: `https://YOUR-IP-ADDRESS:PORT` replacing both `YOUR-IP-ADDRESS` and `PORT` (the port is the number after the `:` in the address given by `parcel`). Note it's important to type `https` at the start of the address to ensure your device connects over HTTP**S**.
+
+The command also lets you serve the folder for access by other devices on your local network, like this:
+```
+zapworks serve . --lan
+```
