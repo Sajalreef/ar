@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8" />
@@ -53,4 +53,84 @@
     
     <script src="index.js"></script>
 </body>
+</html> -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>iPhone AR Image Placement</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body style="margin: 0; overflow: hidden;">
+    <!-- Upload UI -->
+    <input type="file" id="image-upload" accept="image/*" />
+    <div id="controls">
+      <button id="move-btn">Move</button>
+      <button id="resize-btn">Resize</button>
+      <span id="size-display">--</span>
+    </div>
+
+    <!-- AR Scene -->
+    <a-scene
+      vr-mode-ui="enabled: false"
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+    >
+      <a-entity camera></a-entity>
+      <a-marker preset="hiro">
+        <a-image
+          id="placed-image"
+          visible="false"
+          position="0 0 0"
+          rotation="-90 0 0"
+          width="1"
+          height="1"
+        ></a-image>
+      </a-marker>
+    </a-scene>
+
+    <script>
+      const imageUpload = document.getElementById("image-upload");
+      const imageEntity = document.getElementById("placed-image");
+      const sizeDisplay = document.getElementById("size-display");
+
+      const moveBtn = document.getElementById("move-btn");
+      const resizeBtn = document.getElementById("resize-btn");
+
+      let isResizing = false;
+      let currentSize = 1;
+
+      imageUpload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          imageEntity.setAttribute("src", event.target.result);
+          imageEntity.setAttribute("visible", true);
+          updateSizeDisplay();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      moveBtn.addEventListener("click", () => {
+        alert("To move the image, move the marker (Hiro marker) in real space.");
+      });
+
+      resizeBtn.addEventListener("click", () => {
+        currentSize += 0.1;
+        imageEntity.setAttribute("width", currentSize);
+        imageEntity.setAttribute("height", currentSize);
+        updateSizeDisplay();
+      });
+
+      function updateSizeDisplay() {
+        sizeDisplay.textContent = `Size: ${Math.round(currentSize * 100)}cm`;
+      }
+    </script>
+  </body>
 </html>

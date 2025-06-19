@@ -1,4 +1,4 @@
-:root {
+/* :root {
     --primary-color: #4361ee;
     --secondary-color: #3f37c9;
     --accent-color: #4895ef;
@@ -30,6 +30,8 @@ canvas {
 }
 
 /* Upload Container */
+/*  */
+
 #upload-container {
     position: absolute;
     top: 20px;
@@ -222,4 +224,4 @@ canvas {
         padding: 6px 12px;
         font-size: 14px;
     }
-}
+} */
