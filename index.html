@@ -58,108 +58,99 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <title>AR Image Placement</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- A-Frame and AR.js -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
-
+    <meta charset="utf-8">
+    <title>WebXR AR Hit Test</title>
     <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-      }
-      #ui {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 9999;
-        background: rgba(255, 255, 255, 0.8);
-        padding: 10px;
-        border-radius: 8px;
-      }
-      #ui input,
-      #ui button {
-        display: block;
-        margin: 5px 0;
-      }
+      body { margin: 0; overflow: hidden; }
+      canvas { display: block; }
     </style>
   </head>
   <body>
-    <!-- UI Controls -->
-    <div id="ui">
-      <input type="file" id="image-upload" accept="image/*" />
-      <button id="resize-up">Resize +</button>
-      <button id="resize-down">Resize -</button>
-      <span id="dimensions">--</span>
-    </div>
+    <script type="module">
+      import * as THREE from 'https://cdn.skypack.dev/three@0.150.0';
 
-    <!-- AR Scene -->
-    <a-scene
-      vr-mode-ui="enabled: false"
-      embedded
-      arjs="sourceType: webcam; debugUIEnabled: false;"
-    >
-      <a-entity camera></a-entity>
+      let scene, camera, renderer, reticle, controller, imageMesh = null;
+      let hitTestSource = null, hitTestRequested = false;
 
-      <a-marker preset="hiro">
-        <a-image
-          id="placed-image"
-          visible="false"
-          position="0 0 0"
-          rotation="-90 0 0"
-          width="1"
-          height="1"
-        ></a-image>
-      </a-marker>
+      init();
+      animate();
 
-      <a-entity light="type: ambient; color: #fff"></a-entity>
-    </a-scene>
+      async function init() {
+        scene = new THREE.Scene();
 
-    <script>
-      const uploadInput = document.getElementById("image-upload");
-      const imageEntity = document.getElementById("placed-image");
-      const resizeUp = document.getElementById("resize-up");
-      const resizeDown = document.getElementById("resize-down");
-      const dimensionsText = document.getElementById("dimensions");
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
-      let currentSize = 1; // in meters
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.xr.enabled = true;
+        document.body.appendChild(renderer.domElement);
 
-      uploadInput.addEventListener("change", (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+        // Light
+        const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+        scene.add(light);
 
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          imageEntity.setAttribute("src", e.target.result);
-          imageEntity.setAttribute("visible", true);
-          updateDimensions();
-        };
-        reader.readAsDataURL(file);
-      });
+        // Reticle
+        const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        reticle = new THREE.Mesh(ringGeo, ringMat);
+        reticle.matrixAutoUpdate = false;
+        reticle.visible = false;
+        scene.add(reticle);
 
-      resizeUp.addEventListener("click", () => {
-        currentSize = Math.min(currentSize + 0.1, 3.0); // limit to 3 meters
-        applySize();
-      });
+        // Controller
+        controller = renderer.xr.getController(0);
+        controller.addEventListener('select', onSelect);
+        scene.add(controller);
 
-      resizeDown.addEventListener("click", () => {
-        currentSize = Math.max(currentSize - 0.1, 0.1); // limit to 10 cm
-        applySize();
-      });
+        // Start session
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test']
+        });
+        renderer.xr.setSession(session);
 
-      function applySize() {
-        imageEntity.setAttribute("width", currentSize);
-        imageEntity.setAttribute("height", currentSize);
-        updateDimensions();
+        const referenceSpace = await session.requestReferenceSpace('local');
+        const viewerSpace = await session.requestReferenceSpace('viewer');
+        hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+        session.addEventListener('end', () => {
+          hitTestSource = null;
+        });
+
+        renderer.setAnimationLoop((timestamp, frame) => {
+          if (frame) {
+            const hitTestResults = frame.getHitTestResults(hitTestSource);
+            if (hitTestResults.length > 0) {
+              const hit = hitTestResults[0];
+              const pose = hit.getPose(referenceSpace);
+              if (pose) {
+                reticle.visible = true;
+                reticle.matrix.fromArray(pose.transform.matrix);
+              }
+            } else {
+              reticle.visible = false;
+            }
+          }
+          renderer.render(scene, camera);
+        });
       }
 
-      function updateDimensions() {
-        dimensionsText.textContent = `Size: ${Math.round(
-          currentSize * 100
-        )} cm`;
+      function onSelect() {
+        if (reticle.visible && !imageMesh) {
+          const geo = new THREE.PlaneGeometry(0.5, 0.3);
+          const tex = new THREE.TextureLoader().load('your-image.jpg');
+          const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+          imageMesh = new THREE.Mesh(geo, mat);
+          imageMesh.position.setFromMatrixPosition(reticle.matrix);
+          imageMesh.quaternion.setFromRotationMatrix(reticle.matrix);
+          scene.add(imageMesh);
+        }
+      }
+
+      function animate() {
+        renderer.setAnimationLoop(() => {
+          renderer.render(scene, camera);
+        });
       }
     </script>
   </body>
