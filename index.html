@@ -1,57 +1,83 @@
- <!DOCTYPE html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>AR Image Wall</title>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/XRControllerModelFactory.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/XRTargetRaySpace.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXR Image Placement (Zappar Alternative)</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #ar-button {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            z-index: 100;
+        }
+        #placement-ui, #controls-ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none; /* Hidden by default */
+            z-index: 99;
+        }
+        #controls-ui {
+            top: unset;
+            bottom: 20px;
+        }
+        #image-upload-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 101;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+        }
+        #dimensions-display {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+    </style>
 </head>
 <body>
-    <div id="upload-container">
-        <input type="file" id="image-upload" accept="image/*" />
-        <label for="image-upload">
-            <i class="fas fa-image"></i> Choose Image
-        </label>
+    <div id="image-upload-container">
+        <h2>Upload Image for AR</h2>
+        <input type="file" id="image-upload" accept="image/*">
     </div>
-    
-    <div id="enter-ar">
-        <button id="ar-button" class="primary-btn">
-            <i class="fas fa-cube"></i> Start AR
-        </button>
-    </div>
-    
-    <div id="controls-ui">
-        <div class="control-group">
-            <button id="move-btn" class="control-btn">
-                <i class="fas fa-arrows-alt"></i>
-                <span>Move</span>
-            </button>
-            <button id="resize-btn" class="control-btn">
-                <i class="fas fa-expand-alt"></i>
-                <span>Resize</span>
-            </button>
-        </div>
-        <div id="dimensions-display">
-            <i class="fas fa-ruler-combined"></i>
-            <span>100cm × 75cm</span>
-        </div>
-    </div>
-    
-    <div id="unsupported" class="modal">
-        <div class="modal-content">
-            <h3>AR Not Supported</h3>
-            <p>Your device doesn't seem to support AR features. Try using a modern Android or iOS device.</p>
-            <button id="close-modal" class="primary-btn">OK</button>
-        </div>
-    </div>
-    
-    <script src="index.js"></script>
-</body>
-</html> 
 
+    <button id="ar-button">Start AR</button>
+
+    <div id="placement-ui">
+        <p>Tap to place the image.</p>
+        <button id="place-btn" style="display: none;">Place Image</button>
+    </div>
+
+    <div id="controls-ui">
+        <button id="move-btn">Move</button>
+        <button id="resize-btn">Resize</button>
+        <p id="dimensions-display">Dimensions: <span>0x0 cm</span></p>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
