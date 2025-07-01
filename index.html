@@ -1,201 +1,73 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <title>AR Painting Video</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <script src="https://unpkg.com/aframe@1.2.0/dist/aframe.min.js"></script>
-    <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
-    <style>
-      body, html {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: Arial, sans-serif;
-        background: black;
-        height: 100vh;
-        width: 100vw;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column; /* Added for messages */
-      }
-      #startButton {
-        padding: 1em 2em;
-        font-size: 1.5rem;
-        border: none;
-        border-radius: 8px;
-        background-color: #fe6d4d;
-        color: white;
-        cursor: pointer;
-        user-select: none;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        margin-bottom: 20px; /* Space between button and message */
-      }
-      #ar-container {
-        width: 100vw;
-        height: 100vh;
-        display: none;
-      }
-      #message {
-        color: white;
-        font-size: 1.2rem;
-        text-align: center;
-        padding: 10px;
-        background-color: rgba(0, 0, 0, 0.7);
-        border-radius: 5px;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AR Painting Video (MindAR Official Docs Setup)</title>
+    
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image.prod.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   </head>
   <body>
-    <button id="startButton">Start AR</button>
-    <div id="message"></div> <div id="ar-container">
-      <a-scene
-        mindar-image="imageTargetSrc: targets.mind; autoStart: false; uiLoading: yes; uiError: yes; uiScanning: yes;"
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: true"
-        embedded
-      >
+    <a-scene 
+      mindar-image="imageTargetSrc: ./targets.mind;" 
+      vr-mode-ui="enabled: false" 
+      device-orientation-permission-ui="enabled: false"
+      loading-screen="enabled: false;"  >
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-entity mindar-image-target="targetIndex: 0">
         <a-assets>
-          <video
-            id="video"
-            src="video.mp4"
-            preload="auto"
-            crossorigin="anonymous"
-            loop
-            playsinline
-            webkit-playsinline
-          ></video>
+            <video
+                id="video"
+                src="./video.mp4" 
+                preload="auto"
+                crossorigin="anonymous"
+                loop
+                playsinline
+                webkit-playsinline
+            ></video>
         </a-assets>
-
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-        <a-entity mindar-image-target="targetIndex: 0">
-          <a-video
+        <a-video
             src="#video"
             width="1"
             height="0.6"
             position="0 0 0"
             rotation="0 0 0"
-          ></a-video>
-        </a-entity>
-      </a-scene>
-    </div>
+        ></a-video>
+      </a-entity>
+    </a-scene>
 
     <script>
-      const startButton = document.getElementById('startButton');
-      const arContainer = document.getElementById('ar-container');
+      // The MindAR scene should auto-start now, but we can add some logging for the video
       const sceneEl = document.querySelector('a-scene');
       const video = document.querySelector('#video');
-      const messageDiv = document.getElementById('message');
-
-      // Function to display messages to the user
-      function displayMessage(msg, type = 'info') {
-        messageDiv.textContent = msg;
-        messageDiv.style.color = type === 'error' ? 'red' : 'white';
-        messageDiv.style.display = 'block';
-        console.log(`[Message]: ${msg}`);
-      }
-
-      // Check for HTTPS and camera support on load
-      window.onload = () => {
-        if (window.location.protocol !== 'https:') {
-          displayMessage('Error: Camera access requires HTTPS. Please deploy to a secure server.', 'error');
-          startButton.disabled = true;
-          return;
-        }
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          displayMessage('Error: Your browser does not support camera access (getUserMedia).', 'error');
-          startButton.disabled = true;
-        } else {
-          displayMessage('Click "Start AR" to begin and allow camera access.');
-        }
-      };
-
-      // Add a flag to ensure MindAR start is only called once after scene is loaded
-      let mindarReady = false;
-
-      // Listen for the A-Frame scene 'loaded' event
-      sceneEl.addEventListener('loaded', () => {
-        console.log('A-Frame scene loaded. MindAR component should be ready.');
-        // Check if the mindar-image component is now available
-        if (sceneEl.components['mindar-image']) {
-          mindarReady = true;
-          displayMessage('A-Frame scene and MindAR component are ready. Click "Start AR".');
-        } else {
-          displayMessage('Error: mindar-image component not found on scene after loading.', 'error');
-          startButton.disabled = true;
-          console.error('mindar-image component is not available on sceneEl.components.');
-        }
-      });
-
-
-      startButton.addEventListener('click', async () => {
-        if (!mindarReady) {
-          displayMessage('AR is not ready yet. Please wait for the scene to load.', 'error');
-          return;
-        }
-
-        startButton.style.display = 'none';
-        displayMessage('Requesting camera access...');
-
-        try {
-          // Explicitly request camera permissions first.
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          stream.getTracks().forEach(track => track.stop()); // Stop temporary stream
-          displayMessage('Camera permission granted. Starting AR experience...');
-
-          arContainer.style.display = 'block';
-          // This is where the original error occurred. Now we ensure mindarReady is true.
-          await sceneEl.components['mindar-image'].start();
-          console.log('MindAR started successfully.');
-          displayMessage('Scanning for target image...', 'info');
-
-        } catch (error) {
-          console.error('Failed to start AR:', error);
-          arContainer.style.display = 'none'; // Hide AR container on failure
-          startButton.style.display = 'block'; // Show button again
-
-          let errorMessage = 'Could not start AR. ';
-          if (error.name === 'NotAllowedError') {
-            errorMessage += 'Camera access denied. Please allow camera permissions in your browser settings.';
-          } else if (error.name === 'NotFoundError') {
-            errorMessage += 'No camera found. Please ensure a camera is connected and working.';
-          } else if (error.name === 'AbortError') {
-            errorMessage += 'Camera access was aborted. Is another app using the camera?';
-          } else if (error.name === 'NotReadableError') {
-            errorMessage += 'Camera is not readable. It might be in use by another application or device.';
-          } else if (error.name === 'SecurityError') {
-            errorMessage += 'Security error. Ensure you are accessing over HTTPS.';
-          } else if (error.name === 'OverconstrainedError') {
-            errorMessage += 'Camera constraints could not be satisfied (e.g., resolution not supported).';
-          } else {
-            errorMessage += `An unknown error occurred: ${error.message || error}`; // Added error.message || error for better reporting
-          }
-          displayMessage(errorMessage, 'error');
-        }
-      });
 
       sceneEl.addEventListener('targetFound', () => {
+        console.log('Target found! Playing video.');
         video.play();
-        displayMessage('Target found! Video playing.', 'info');
       });
 
       sceneEl.addEventListener('targetLost', () => {
+        console.log('Target lost. Pausing video.');
         video.pause();
-        displayMessage('Target lost. Video paused.', 'info');
       });
 
-      // Optional: Handle MindAR UI events for additional feedback
+      // You can also listen to MindAR's built-in UI events for feedback (optional)
       sceneEl.addEventListener('mindar-image-loading', () => {
-        displayMessage('Loading AR assets...');
+        console.log('MindAR: Loading assets...');
       });
       sceneEl.addEventListener('mindar-image-error', (evt) => {
-        displayMessage(`MindAR initialization error: ${evt.detail.error}`, 'error');
+        console.error('MindAR: Initialization error:', evt.detail.error);
+        alert('AR Error: ' + evt.detail.error + '. Please check console for details.'); // Simple user feedback
       });
       sceneEl.addEventListener('mindar-image-scanning', () => {
-        displayMessage('Scanning for target...');
+        console.log('MindAR: Scanning for target...');
       });
+
+      // Note: With autoStart, camera permission will be requested immediately on page load.
+      // Make sure your browser grants permission.
     </script>
   </body>
 </html>
