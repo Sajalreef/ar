@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>AR Painting Video</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<script src="https://unpkg.com/aframe@1.4.2/dist/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe@1.2.0/dist/aframe.min.js"></script>
     <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
     <style>
       body, html {
@@ -35,16 +35,27 @@
         height: 100vh;
         display: none;
       }
+      #error-message {
+        color: white;
+        background: rgba(255,0,0,0.7);
+        padding: 20px;
+        border-radius: 10px;
+        display: none;
+        max-width: 80%;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
     <button id="startButton">Start AR</button>
+    <div id="error-message"></div>
 
     <div id="ar-container">
       <a-scene
         mindar-image="imageTargetSrc: targets.mind; autoStart: false; uiLoading: yes; uiError: yes; uiScanning: yes;"
         vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: true"
+        device-orientation-permission-ui="enabled: false"
+        renderer="colorManagement: true;"
         embedded
       >
         <a-assets>
@@ -76,27 +87,92 @@
     <script>
       const startButton = document.getElementById('startButton');
       const arContainer = document.getElementById('ar-container');
+      const errorMessage = document.getElementById('error-message');
       const sceneEl = document.querySelector('a-scene');
       const video = document.querySelector('#video');
 
-      startButton.addEventListener('click', async () => {
-        startButton.style.display = 'none';
-        arContainer.style.display = 'block';
+      // Check if browser supports required features
+      function checkCompatibility() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showError("Your browser doesn't support camera access. Try Chrome or Firefox.");
+          return false;
+        }
+        if (!AFRAME.components['mindar-image']) {
+          showError("MindAR library failed to load. Check your internet connection.");
+          return false;
+        }
+        return true;
+      }
 
+      function showError(msg) {
+        errorMessage.textContent = msg;
+        errorMessage.style.display = 'block';
+        startButton.style.display = 'none';
+      }
+
+      async function requestCameraPermission() {
         try {
-          await sceneEl.components['mindar-image'].start();
-          console.log('MindAR started');
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          // Immediately stop the stream - we just needed permission
+          stream.getTracks().forEach(track => track.stop());
+          return true;
+        } catch (err) {
+          console.error("Camera permission denied:", err);
+          showError("Camera access was blocked. Please enable camera permissions and try again.");
+          return false;
+        }
+      }
+
+      startButton.addEventListener('click', async () => {
+        if (!checkCompatibility()) return;
+        
+        startButton.textContent = "Loading...";
+        
+        try {
+          // First request camera permission
+          const hasPermission = await requestCameraPermission();
+          if (!hasPermission) return;
+          
+          // Then start AR
+          startButton.style.display = 'none';
+          arContainer.style.display = 'block';
+          
+          const mindarSystem = sceneEl.systems["mindar-image-system"];
+          if (!mindarSystem) {
+            throw new Error("MindAR system not initialized");
+          }
+          
+          await mindarSystem.start();
+          console.log('MindAR started successfully');
+          
+          // Check if camera is actually working
+          setTimeout(() => {
+            const videoElement = document.querySelector('video[mindar-face-helper]');
+            if (!videoElement || videoElement.readyState === 0) {
+              throw new Error("Camera stream not received");
+            }
+          }, 1000);
+          
         } catch (error) {
-          console.error('MindAR failed to start:', error);
+          console.error('AR initialization failed:', error);
+          showError(`Failed to start AR: ${error.message}`);
+          startButton.style.display = 'block';
+          arContainer.style.display = 'none';
+          startButton.textContent = "Start AR";
         }
       });
 
       sceneEl.addEventListener('targetFound', () => {
-        video.play();
+        video.play().catch(e => console.log("Video play failed:", e));
       });
 
       sceneEl.addEventListener('targetLost', () => {
         video.pause();
+      });
+
+      // Show start button only after everything is loaded
+      window.addEventListener('load', () => {
+        startButton.style.display = 'block';
       });
     </script>
   </body>
