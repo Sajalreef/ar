@@ -1,18 +1,28 @@
+<!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      body, html {
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
   </head>
   <body>
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind;" 
-             color-space="sRGB"
-             renderer="colorManagement: true, physicallyCorrectLights"
-             vr-mode-ui="enabled: false"
-             device-orientation-permission-ui="enabled: false">
-
+    <!-- A-Frame Scene -->
+    <a-scene 
+      mindar-image="imageTargetSrc: ./targets.mind;" 
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      embedded
+    >
       <a-assets>
-        <video id="card" src="./video.mp4" loop="true" preload="auto" crossorigin="anonymous" playsinline webkit-playsinline ></video>
+        <video id="card" src="./video.mp4" loop preload="auto" crossorigin="anonymous" playsinline webkit-playsinline></video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -22,16 +32,48 @@
       </a-entity>
     </a-scene>
 
+    <!-- Button to enable sound -->
+    <button id="playButton" style="
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 1em 2em;
+      font-size: 1.2em;
+      z-index: 999;
+    ">
+      Tap to enable video sound
+    </button>
+
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        const sceneEl = document.querySelector("a-scene");
         const videoEl = document.querySelector("#card");
+        const playButton = document.getElementById("playButton");
+        const sceneEl = document.querySelector("a-scene");
 
+        // Unlock video with sound after user interaction
+        playButton.addEventListener("click", async () => {
+          videoEl.muted = false;
+          try {
+            await videoEl.play();
+          } catch (err) {
+            console.warn("Video play failed:", err);
+          }
+          playButton.style.display = "none";
+        });
+
+        // Play/pause video based on image detection
         sceneEl.addEventListener("renderstart", () => {
           const target = sceneEl.querySelector("[mindar-image-target]");
-          target.addEventListener("targetFound", () => {
-            videoEl.play();
+
+          target.addEventListener("targetFound", async () => {
+            try {
+              await videoEl.play();
+            } catch (err) {
+              console.warn("Play error on targetFound:", err);
+            }
           });
+
           target.addEventListener("targetLost", () => {
             videoEl.pause();
           });
