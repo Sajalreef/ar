@@ -1,25 +1,104 @@
-
+<!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8" />
+    <title>MindAR Video on Painting</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      body, html {
+        margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw;
+        background-color: black;
+      }
+      #startButton {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 1em 2em;
+        font-size: 1.5rem;
+        background-color: #fe6d4d;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+        z-index: 9999;
+      }
+      #ar-container {
+        display: none;
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
   </head>
   <body>
-    <a-scene mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-      <a-assets>
-	<img id="card" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png" />
-	<a-asset-item id="avatarModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf"></a-asset-item>
-      </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <button id="startButton">Start AR</button>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-plane src="#card" position="0 0 0" height="0.552" width="1" rotation="0 0 0"></a-plane>
-        <a-gltf-model rotation="0 0 0 " position="0 0 0.1" scale="0.005 0.005 0.005" src="#avatarModel"
-          animation="property: position; to: 0 0.1 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
-        >
-      </a-entity>
-    </a-scene>
+    <div id="ar-container">
+      <a-scene
+        mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
+        color-space="sRGB"
+        renderer="colorManagement: true, physicallyCorrectLights"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: true"
+        embedded
+      >
+        <a-assets>
+          <video
+            id="video"
+            src="video.mp4"
+            preload="auto"
+            crossorigin="anonymous"
+            loop
+            playsinline
+            webkit-playsinline
+          ></video>
+        </a-assets>
+
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+        <a-entity mindar-image-target="targetIndex: 0">
+          <!-- Video plane on top of target -->
+          <a-video
+            src="#video"
+            width="1"
+            height="0.552"
+            position="0 0 0"
+            rotation="0 0 0"
+          ></a-video>
+        </a-entity>
+      </a-scene>
+    </div>
+
+    <script>
+      const startButton = document.getElementById('startButton');
+      const arContainer = document.getElementById('ar-container');
+      const sceneEl = document.querySelector('a-scene');
+      const video = document.querySelector('#video');
+
+      startButton.addEventListener('click', async () => {
+        startButton.style.display = 'none';
+        arContainer.style.display = 'block';
+
+        try {
+          await sceneEl.components['mindar-image'].start();
+          console.log('MindAR started');
+        } catch (error) {
+          console.error('MindAR failed to start:', error);
+        }
+      });
+
+      sceneEl.addEventListener('targetFound', () => {
+        video.play();
+      });
+
+      sceneEl.addEventListener('targetLost', () => {
+        video.pause();
+      });
+    </script>
+
   </body>
 </html>
