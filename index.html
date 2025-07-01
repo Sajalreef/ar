@@ -78,15 +78,30 @@
       const sceneEl = document.querySelector('a-scene');
       const video = document.querySelector('#video');
 
+      // Add a 'loaded' event listener for the A-Frame scene
+      sceneEl.addEventListener('loaded', () => {
+          console.log('A-Frame scene loaded. MindAR component should be ready.');
+          if (sceneEl.components['mindar-image']) {
+              console.log('MindAR component found on sceneEl.components.');
+          } else {
+              console.error('MindAR component NOT found on sceneEl.components. This is unexpected.');
+          }
+      });
+
+
       startButton.addEventListener('click', async () => {
         startButton.style.display = 'none';
         arContainer.style.display = 'block';
 
         try {
-          await sceneEl.systems['mindar-image'].start();
-          console.log('MindAR started');
+          // *** THE FIX IS HERE: Change .systems back to .components ***
+          await sceneEl.components['mindar-image'].start();
+          console.log('MindAR started successfully.');
         } catch (error) {
           console.error('MindAR failed to start:', error);
+          startButton.style.display = 'block'; // Show button again on failure
+          arContainer.style.display = 'none'; // Hide AR container
+          alert('AR failed to start: ' + error.message + '. Check console for details.'); // User feedback
         }
       });
 
