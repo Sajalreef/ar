@@ -2,60 +2,27 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>AR Painting Video</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <script src="https://unpkg.com/aframe@1.2.0/dist/aframe.min.js"></script>
-    <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+    <title>MindAR Video on Painting</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      body, html {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: Arial, sans-serif;
-        background: black;
-        height: 100vh;
-        width: 100vw;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
+      body, html { margin: 0; padding: 0; overflow: hidden; }
+      #ar-container { width: 100vw; height: 100vh; display: none; }
       #startButton {
-        padding: 1em 2em;
-        font-size: 1.5rem;
-        border: none;
-        border-radius: 8px;
-        background-color: #fe6d4d;
-        color: white;
-        cursor: pointer;
-        user-select: none;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      }
-      #ar-container {
-        width: 100vw;
-        height: 100vh;
-        display: none;
-      }
-      #error-message {
-        color: white;
-        background: rgba(255,0,0,0.7);
-        padding: 20px;
-        border-radius: 10px;
-        display: none;
-        max-width: 80%;
-        text-align: center;
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        padding: 1em 2em; font-size: 1.5rem; background: #fe6d4d; color: white; border: none; border-radius: 8px;
+        cursor: pointer; user-select: none; z-index: 9999;
       }
     </style>
   </head>
   <body>
     <button id="startButton">Start AR</button>
-    <div id="error-message"></div>
-
     <div id="ar-container">
       <a-scene
         mindar-image="imageTargetSrc: targets.mind; autoStart: false; uiLoading: yes; uiError: yes; uiScanning: yes;"
         vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false"
-        renderer="colorManagement: true;"
+        device-orientation-permission-ui="enabled: true"
         embedded
       >
         <a-assets>
@@ -87,92 +54,27 @@
     <script>
       const startButton = document.getElementById('startButton');
       const arContainer = document.getElementById('ar-container');
-      const errorMessage = document.getElementById('error-message');
       const sceneEl = document.querySelector('a-scene');
       const video = document.querySelector('#video');
 
-      // Check if browser supports required features
-      function checkCompatibility() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          showError("Your browser doesn't support camera access. Try Chrome or Firefox.");
-          return false;
-        }
-        if (!AFRAME.components['mindar-image']) {
-          showError("MindAR library failed to load. Check your internet connection.");
-          return false;
-        }
-        return true;
-      }
-
-      function showError(msg) {
-        errorMessage.textContent = msg;
-        errorMessage.style.display = 'block';
-        startButton.style.display = 'none';
-      }
-
-      async function requestCameraPermission() {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          // Immediately stop the stream - we just needed permission
-          stream.getTracks().forEach(track => track.stop());
-          return true;
-        } catch (err) {
-          console.error("Camera permission denied:", err);
-          showError("Camera access was blocked. Please enable camera permissions and try again.");
-          return false;
-        }
-      }
-
       startButton.addEventListener('click', async () => {
-        if (!checkCompatibility()) return;
-        
-        startButton.textContent = "Loading...";
-        
+        startButton.style.display = 'none';
+        arContainer.style.display = 'block';
+
         try {
-          // First request camera permission
-          const hasPermission = await requestCameraPermission();
-          if (!hasPermission) return;
-          
-          // Then start AR
-          startButton.style.display = 'none';
-          arContainer.style.display = 'block';
-          
-          const mindarSystem = sceneEl.systems["mindar-image-system"];
-          if (!mindarSystem) {
-            throw new Error("MindAR system not initialized");
-          }
-          
-          await mindarSystem.start();
-          console.log('MindAR started successfully');
-          
-          // Check if camera is actually working
-          setTimeout(() => {
-            const videoElement = document.querySelector('video[mindar-face-helper]');
-            if (!videoElement || videoElement.readyState === 0) {
-              throw new Error("Camera stream not received");
-            }
-          }, 1000);
-          
+          await sceneEl.components['mindar-image'].start();
+          console.log('MindAR started');
         } catch (error) {
-          console.error('AR initialization failed:', error);
-          showError(`Failed to start AR: ${error.message}`);
-          startButton.style.display = 'block';
-          arContainer.style.display = 'none';
-          startButton.textContent = "Start AR";
+          console.error('MindAR failed to start:', error);
         }
       });
 
       sceneEl.addEventListener('targetFound', () => {
-        video.play().catch(e => console.log("Video play failed:", e));
+        video.play();
       });
 
       sceneEl.addEventListener('targetLost', () => {
         video.pause();
-      });
-
-      // Show start button only after everything is loaded
-      window.addEventListener('load', () => {
-        startButton.style.display = 'block';
       });
     </script>
   </body>
