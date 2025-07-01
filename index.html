@@ -1,73 +1,25 @@
-<!DOCTYPE html>
+
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Painting Video (MindAR Official Docs Setup)</title>
-    
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image.prod.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   </head>
   <body>
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind;" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false"
-      loading-screen="enabled: false;"  >
+    <a-scene mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      <a-assets>
+	<img id="card" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png" />
+	<a-asset-item id="avatarModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf"></a-asset-item>
+      </a-assets>
+
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
       <a-entity mindar-image-target="targetIndex: 0">
-        <a-assets>
-            <video
-                id="video"
-                src="./video.mp4" 
-                preload="auto"
-                crossorigin="anonymous"
-                loop
-                playsinline
-                webkit-playsinline
-            ></video>
-        </a-assets>
-        <a-video
-            src="#video"
-            width="1"
-            height="0.6"
-            position="0 0 0"
-            rotation="0 0 0"
-        ></a-video>
+        <a-plane src="#card" position="0 0 0" height="0.552" width="1" rotation="0 0 0"></a-plane>
+        <a-gltf-model rotation="0 0 0 " position="0 0 0.1" scale="0.005 0.005 0.005" src="#avatarModel"
+          animation="property: position; to: 0 0.1 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
+        >
       </a-entity>
     </a-scene>
-
-    <script>
-      // The MindAR scene should auto-start now, but we can add some logging for the video
-      const sceneEl = document.querySelector('a-scene');
-      const video = document.querySelector('#video');
-
-      sceneEl.addEventListener('targetFound', () => {
-        console.log('Target found! Playing video.');
-        video.play();
-      });
-
-      sceneEl.addEventListener('targetLost', () => {
-        console.log('Target lost. Pausing video.');
-        video.pause();
-      });
-
-      // You can also listen to MindAR's built-in UI events for feedback (optional)
-      sceneEl.addEventListener('mindar-image-loading', () => {
-        console.log('MindAR: Loading assets...');
-      });
-      sceneEl.addEventListener('mindar-image-error', (evt) => {
-        console.error('MindAR: Initialization error:', evt.detail.error);
-        alert('AR Error: ' + evt.detail.error + '. Please check console for details.'); // Simple user feedback
-      });
-      sceneEl.addEventListener('mindar-image-scanning', () => {
-        console.log('MindAR: Scanning for target...');
-      });
-
-      // Note: With autoStart, camera permission will be requested immediately on page load.
-      // Make sure your browser grants permission.
-    </script>
   </body>
 </html>
